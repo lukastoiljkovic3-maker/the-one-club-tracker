@@ -614,6 +614,10 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .lsb-btn.tab-q.active      .lsb-count { color: var(--nikola); }
 .lsb-btn.tab-dq.active     { border-bottom-color: var(--red); background: rgba(244,63,94,.04); }
 .lsb-btn.tab-dq.active     .lsb-count { color: var(--red); }
+.lsb-btn.tab-dq.active     { border-bottom-color: var(--red); background: rgba(244,63,94,.04); }
+.lsb-btn.tab-dq.active     .lsb-count { color: var(--red); }
+.lsb-btn.tab-wb.active     { border-bottom-color: #a855f7; background: rgba(168,85,247,.04); }
+.lsb-btn.tab-wb.active     .lsb-count { color: #a855f7; }
 .lsb-btn.tab-lm.active     { border-bottom-color: var(--yellow); background: rgba(234,179,8,.04); }
 .lsb-btn.tab-lm.active     .lsb-count { color: var(--yellow); }
 
@@ -640,9 +644,10 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .ltr-name { font-size: 13px; font-weight: 700; line-height: 1.2; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 .ltr-sub  { font-size: 10px; color: var(--muted); margin-top: 1px; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 .ltr-type { display: inline-flex; padding: 2px 8px; border-radius: 99px; font-size: 9px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; }
-.type-q  { background: rgba(59,130,246,.10); color: var(--nikola); }
-.type-dq { background: rgba(244,63,94,.10);  color: var(--red); }
-.type-lm { background: rgba(234,179,8,.10);  color: var(--yellow); }
+.type-q  { background: rgba(59,130,246,.10);  color: var(--nikola); }
+.type-dq { background: rgba(244,63,94,.10);   color: var(--red); }
+.type-wb { background: rgba(168,85,247,.10);  color: #a855f7; }
+.type-lm { background: rgba(234,179,8,.10);   color: var(--yellow); }
 .ltr-status-sel {
   padding: 5px 8px; border-radius: 8px; border: 1px solid var(--b);
   background: var(--s2); color: var(--text); font-family: var(--font);
@@ -1545,11 +1550,11 @@ const GHL_CF    = {
   'qIUxzX862aqvd2DPSsTn': 'instagram'
 };
 let leadsFilter  = 'all';
-let leadsSubTab  = 'all';   // 'all' | 'qualified' | 'dq' | 'lead_magnet'
+let leadsSubTab  = 'all';   // 'all' | 'qualified' | 'disqualified' | 'webinar_lead' | 'lead_magnet'
 let currentLeadId = null;
 let leadsSearch  = '';
 let cachedLeads  = [];
-let leadCounts   = { qualified: 0, dq: 0, lead_magnet: 0 };
+let leadCounts   = { qualified: 0, disqualified: 0, webinar_lead: 0, lead_magnet: 0 };
 let openNotes    = new Set();
 
 // Monthly targets (persisted in localStorage)
@@ -2571,12 +2576,13 @@ async function loadLeads(lead_type){
 }
 
 async function loadLeadCounts(){
-  const [qR,dR,lR]=await Promise.all([
+  const [qR,dqR,wR,lR]=await Promise.all([
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).eq('lead_type','qualified'),
-    sb.from('ghl_leads').select('id',{count:'exact',head:true}).eq('lead_type','dq'),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).eq('lead_type','disqualified'),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).eq('lead_type','webinar_lead'),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).eq('lead_type','lead_magnet'),
   ]);
-  return{qualified:qR.count||0,dq:dR.count||0,lead_magnet:lR.count||0};
+  return{qualified:qR.count||0,disqualified:dqR.count||0,webinar_lead:wR.count||0,lead_magnet:lR.count||0};
 }
 
 function mapContact(c, lead_type){
@@ -2604,7 +2610,8 @@ async function syncLeadsFromGHL(){
     if(json.error)throw new Error(json.error);
     const rows=[
       ...(json.qualified||[]).map(c=>mapContact(c,'qualified')),
-      ...(json.dq||[]).map(c=>mapContact(c,'dq')),
+      ...(json.disqualified||[]).map(c=>mapContact(c,'disqualified')),
+      ...(json.webinarLead||[]).map(c=>mapContact(c,'webinar_lead')),
       ...(json.leadMagnet||[]).map(c=>mapContact(c,'lead_magnet')),
     ];
     if(rows.length){
@@ -2666,7 +2673,7 @@ function renderLeads(all){
 
   const fuToday=all.filter(l=>l.follow_up_date&&l.follow_up_date<=todayStr&&l.status!=='Closed'&&l.status!=='DQ');
 
-  const typePill=t=>t==='qualified'?'<span class="ltr-type type-q">Qualified</span>':t==='dq'?'<span class="ltr-type type-dq">DQ</span>':'<span class="ltr-type type-lm">Lead Magnet</span>';
+  const typePill=t=>t==='qualified'?'<span class="ltr-type type-q">Qualified</span>':t==='disqualified'?'<span class="ltr-type type-dq">Disqualified</span>':t==='webinar_lead'?'<span class="ltr-type type-wb">Webinar</span>':'<span class="ltr-type type-lm">Lead Magnet</span>';
   const syncSvg=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>`;
 
   const rows=leads.map(c=>{
@@ -2697,7 +2704,7 @@ function renderLeads(all){
     </tr>`;
   }).join('')||`<tr><td colspan="6" style="padding:48px 20px;text-align:center;color:var(--muted)"><div style="font-size:24px;margin-bottom:8px">🎯</div><div style="font-size:13px;font-weight:700">Nema leadova</div></td></tr>`;
 
-  const total=leadCounts.qualified+leadCounts.dq+leadCounts.lead_magnet;
+  const total=leadCounts.qualified+leadCounts.disqualified+leadCounts.webinar_lead+leadCounts.lead_magnet;
   el.innerHTML=`<div style="width:100%">
 
     ${fuToday.length?`<div class="fu-today-banner" style="margin-bottom:16px">
@@ -2716,8 +2723,11 @@ function renderLeads(all){
       <button class="lsb-btn tab-q ${leadsSubTab==='qualified'?'active':''}" onclick="setLeadsSubTab('qualified')">
         <span class="lsb-count">${leadCounts.qualified}</span><span class="lsb-label">Qualified</span>
       </button>
-      <button class="lsb-btn tab-dq ${leadsSubTab==='dq'?'active':''}" onclick="setLeadsSubTab('dq')">
-        <span class="lsb-count">${leadCounts.dq}</span><span class="lsb-label">DQ</span>
+      <button class="lsb-btn tab-dq ${leadsSubTab==='disqualified'?'active':''}" onclick="setLeadsSubTab('disqualified')">
+        <span class="lsb-count">${leadCounts.disqualified}</span><span class="lsb-label">Disqualified</span>
+      </button>
+      <button class="lsb-btn tab-wb ${leadsSubTab==='webinar_lead'?'active':''}" onclick="setLeadsSubTab('webinar_lead')">
+        <span class="lsb-count">${leadCounts.webinar_lead}</span><span class="lsb-label">Webinar</span>
       </button>
       <button class="lsb-btn tab-lm ${leadsSubTab==='lead_magnet'?'active':''}" onclick="setLeadsSubTab('lead_magnet')">
         <span class="lsb-count">${leadCounts.lead_magnet}</span><span class="lsb-label">Lead Magnet</span>
@@ -2763,7 +2773,7 @@ function openLeadDetail(id){
   const todayStr=new Date().toISOString().slice(0,10);
   const initials=(c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const avCls=c.assigned_to==='nikola'?'av-n':c.assigned_to==='mateja'?'av-m':'';
-  const typePillMap={qualified:'<span class="ltr-type type-q">Qualified</span>',dq:'<span class="ltr-type type-dq">DQ</span>',lead_magnet:'<span class="ltr-type type-lm">Lead Magnet</span>'};
+  const typePillMap={qualified:'<span class="ltr-type type-q">Qualified</span>',disqualified:'<span class="ltr-type type-dq">Disqualified</span>',webinar_lead:'<span class="ltr-type type-wb">Webinar</span>',lead_magnet:'<span class="ltr-type type-lm">Lead Magnet</span>'};
   const stOpts=['Novi','Follow Up','Closed','DQ'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('');
   let fuCls=''; if(c.follow_up_date){fuCls=c.follow_up_date===todayStr?'fu-today':c.follow_up_date<todayStr?'fu-overdue':'';}
   const dealOpts=Object.entries(DEALS).map(([k,v])=>`<option value="${k}" ${c.deal===k?'selected':''}>${v.icon} ${v.label} — ${v.price}</option>`).join('');
