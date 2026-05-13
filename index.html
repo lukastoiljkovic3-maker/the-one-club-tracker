@@ -2569,7 +2569,16 @@ function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').
 
 async function loadLeads(lead_type){
   let q=sb.from('ghl_leads').select('*').order('date_added',{ascending:false}).limit(5000);
-  if(lead_type && lead_type!=='all') q=q.eq('lead_type',lead_type);
+  if(lead_type && lead_type!=='all'){
+    const tagMap={
+      qualified:['qualified','qualified-webinar'],
+      disqualified:['dq','disqualified-webinar'],
+      webinar_lead:['webinar-lead'],
+      lead_magnet:['lead-magnet'],
+    };
+    const tags=tagMap[lead_type]||[];
+    if(tags.length) q=q.overlaps('tags',tags);
+  }
   const {data,error}=await q;
   if(error){console.error(error);return[];}
   return data||[];
@@ -2577,10 +2586,10 @@ async function loadLeads(lead_type){
 
 async function loadLeadCounts(){
   const [qR,dqR,wR,lR]=await Promise.all([
-    sb.from('ghl_leads').select('id',{count:'exact',head:true}).eq('lead_type','qualified'),
-    sb.from('ghl_leads').select('id',{count:'exact',head:true}).eq('lead_type','disqualified'),
-    sb.from('ghl_leads').select('id',{count:'exact',head:true}).eq('lead_type','webinar_lead'),
-    sb.from('ghl_leads').select('id',{count:'exact',head:true}).eq('lead_type','lead_magnet'),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['qualified','qualified-webinar']),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['dq','disqualified-webinar']),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['webinar-lead']),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['lead-magnet']),
   ]);
   return{qualified:qR.count||0,disqualified:dqR.count||0,webinar_lead:wR.count||0,lead_magnet:lR.count||0};
 }
@@ -2590,6 +2599,7 @@ function mapContact(c, lead_type){
   (c.customFields||[]).forEach(f=>{if(GHL_CF[f.id])cf[GHL_CF[f.id]]=f.value;});
   return{
     id:c.id, lead_type,
+    tags:c.tags||[],
     name:[c.firstName,c.lastName].filter(Boolean).join(' ')||'Nepoznat',
     email:c.email||null, phone:c.phone||null,
     instagram:cf.instagram||null, experience:cf.experience||null,
@@ -2608,7 +2618,7 @@ async function syncLeadsFromGHL(){
     if(!res.ok)throw new Error(`API HTTP ${res.status}`);
     const json=await res.json();
     if(json.error)throw new Error(json.error);
-    // Deduplicate by ID — priority: qualified > disqualified > webinar_lead > lead_magnet
+    // Merge all contacts by ID — tags stored from GHL, lead_type = highest priority match
     const seen=new Map();
     const priority=['qualified','disqualified','webinar_lead','lead_magnet'];
     [
