@@ -33,10 +33,12 @@ export default async function handler(req, res) {
   try {
     const all = await fetchAllContacts();
 
-    const qualified    = all.filter(c => c.tags?.includes('qualified'));
-    const disqualified = all.filter(c => c.tags?.includes('disqualified'));
-    const webinarLead  = all.filter(c => c.tags?.includes('webinar-lead'));
-    const leadMagnet   = all.filter(c => c.tags?.includes('lead-magnet'));
+    const hasTag = (c, ...tags) => tags.some(t => c.tags?.includes(t));
+
+    const qualified    = all.filter(c => hasTag(c, 'qualified', 'qualified-webinar'));
+    const disqualified = all.filter(c => hasTag(c, 'disqualified-webinar', 'dq'));
+    const webinarLead  = all.filter(c => hasTag(c, 'webinar-lead'));
+    const leadMagnet   = all.filter(c => hasTag(c, 'lead-magnet'));
 
     res.status(200).json({ qualified, disqualified, webinarLead, leadMagnet });
   } catch (e) {
