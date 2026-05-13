@@ -4,15 +4,10 @@ const BASE      = 'https://services.leadconnectorhq.com';
 
 async function fetchAllContacts() {
   const contacts = [];
-  let startAfterId = null;
+  let url = `${BASE}/contacts/?locationId=${GHL_LOC}&limit=100`;
 
-  while (true) {
-    const url = new URL(`${BASE}/contacts/`);
-    url.searchParams.set('locationId', GHL_LOC);
-    url.searchParams.set('limit', '100');
-    if (startAfterId) url.searchParams.set('startAfterId', startAfterId);
-
-    const res = await fetch(url.toString(), {
+  while (url) {
+    const res = await fetch(url, {
       headers: {
         Authorization: `Bearer ${GHL_TOKEN}`,
         Version: '2021-07-28',
@@ -25,11 +20,8 @@ async function fetchAllContacts() {
     }
 
     const json = await res.json();
-    const page = json.contacts || [];
-    contacts.push(...page);
-
-    if (page.length < 100) break;
-    startAfterId = page[page.length - 1].id;
+    contacts.push(...(json.contacts || []));
+    url = json.meta?.nextPageUrl || null;
   }
 
   return contacts;
