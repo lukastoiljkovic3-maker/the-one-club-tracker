@@ -1,0 +1,15 @@
+{
+  "name": "The One Club Sales Tracker",
+  "short_name": "TOC Tracker",
+  "description": "Sales CRM for The One Club team",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0d10",
+  "theme_color": "#0d0d10",
+  "orientation": "portrait-primary",
+  "icons": [
+    { "src": "/thenewioslogov2.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/thenewioslogov2.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/thenewioslogov2.png", "sizes": "1024x1024", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
