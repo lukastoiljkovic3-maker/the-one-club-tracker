@@ -1447,6 +1447,9 @@ button, .tab, .btn, .btn-add, .cal-cell, .log-table tbody tr { touch-action: man
       <button class="tab" data-member="metrics" onclick="setTab('metrics')">
         <span class="tab-pip" style="background:var(--yellow)"></span> Metrics
       </button>
+      <button class="tab" data-member="wolf" onclick="setTab('wolf')">
+        <span class="tab-pip" style="background:#f59e0b"></span> Wolf
+      </button>
     </div>
     <button class="btn-add" onclick="openModal(null)">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -1814,7 +1817,8 @@ function renderKPIs(data) {
   if (currentTab === 'team') {
     const sN = sum(gm(data,'nikola',currentYear,currentMonth));
     const sM = sum(gm(data,'mateja',currentYear,currentMonth));
-    s = { calls:sN.calls+sM.calls, pickups:sN.pickups+sM.pickups, dq:sN.dq+sM.dq, followup:sN.followup+sM.followup, close:sN.close+sM.close };
+    const sD = sum(gm(data,'dusica',currentYear,currentMonth));
+    s = { calls:sN.calls+sM.calls+sD.calls, pickups:sN.pickups+sM.pickups+sD.pickups, dq:sN.dq+sM.dq+sD.dq, followup:sN.followup+sM.followup+sD.followup, close:sN.close+sM.close+sD.close };
   } else {
     s = sum(gm(data,currentTab,currentYear,currentMonth));
   }
@@ -1899,10 +1903,10 @@ function renderTeam(data) {
         <div class="card-head"><div class="card-title">Ko je Jači?</div></div>
         <div class="card-body">
           <div class="h2h-wrap">
-            ${h2h('Pozivi',sN.calls,sM.calls)}
-            ${h2h('Javljanja',sN.pickups,sM.pickups)}
-            ${h2h('Zatvoreni',sN.close,sM.close)}
-            ${h2h('Follow Up',sN.followup,sM.followup)}
+            ${h2h('Pozivi',sN.calls,sM.calls,sD.calls)}
+            ${h2h('Javljanja',sN.pickups,sM.pickups,sD.pickups)}
+            ${h2h('Zatvoreni',sN.close,sM.close,sD.close)}
+            ${h2h('Follow Up',sN.followup,sM.followup,sD.followup)}
           </div>
         </div>
       </div>
@@ -2073,7 +2077,8 @@ function renderYearTable(data) {
   const months = MONTHS3.map((lbl,i)=>{
     const sN=sum(gm(data,'nikola',currentYear,i));
     const sM=sum(gm(data,'mateja',currentYear,i));
-    return {lbl,calls:sN.calls+sM.calls,pickups:sN.pickups+sM.pickups,dq:sN.dq+sM.dq,followup:sN.followup+sM.followup,close:sN.close+sM.close,idx:i};
+    const sD=sum(gm(data,'dusica',currentYear,i));
+    return {lbl,calls:sN.calls+sM.calls+sD.calls,pickups:sN.pickups+sM.pickups+sD.pickups,dq:sN.dq+sM.dq+sD.dq,followup:sN.followup+sM.followup+sD.followup,close:sN.close+sM.close+sD.close,idx:i};
   });
   const tot = months.reduce((a,m)=>({calls:a.calls+m.calls,pickups:a.pickups+m.pickups,dq:a.dq+m.dq,followup:a.followup+m.followup,close:a.close+m.close}),{calls:0,pickups:0,dq:0,followup:0,close:0});
   const hdr=months.map(m=>`<th class="${m.idx===currentMonth?'yr-cur':''}">${m.lbl}</th>`).join('');
@@ -2083,19 +2088,23 @@ function renderYearTable(data) {
   </tbody></table>`;
 }
 
-function h2h(label,vN,vM) {
-  const tot=vN+vM;
-  const pN=tot?Math.round(vN/tot*100):50;
-  const pM=100-pN;
+function h2h(label,vN,vM,vD) {
+  vD = vD||0;
+  const tot=vN+vM+vD;
+  const pN=tot?Math.round(vN/tot*100):34;
+  const pM=tot?Math.round(vM/tot*100):33;
+  const pD=Math.max(0,100-pN-pM);
   return `<div class="h2h-row">
-    <div class="h2h-lbl">
-      <span style="color:var(--nikola)">Nikola &nbsp;${vN}</span>
+    <div class="h2h-lbl" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:space-between;align-items:center">
+      <span style="color:var(--nikola)">Nikola ${vN}</span>
+      <span style="color:var(--mateja)">Mateja ${vM}</span>
       <span class="h2h-metric">${label}</span>
-      <span style="color:var(--mateja)">${vM}&nbsp; Mateja</span>
+      <span style="color:var(--dusica)">Dusica ${vD}</span>
     </div>
     <div class="h2h-track">
       <div class="h2h-fill" style="width:${pN}%;background:var(--nikola)"></div>
       <div class="h2h-fill" style="width:${pM}%;background:var(--mateja)"></div>
+      <div class="h2h-fill" style="width:${pD}%;background:var(--dusica)"></div>
     </div>
   </div>`;
 }
@@ -2109,20 +2118,21 @@ function setMetricsPeriod(p){ metricsPeriod=p; renderMetricsTab(); }
 /* ── TREND CHART DATA ── */
 function buildChartData(data, period) {
   const now = new Date();
-  const labels=[], callsN=[], callsM=[], closeN=[], closeM=[];
+  const labels=[], callsN=[], callsM=[], callsD=[], closeN=[], closeM=[], closeD=[];
 
   const dayPoint=(dt)=>{
     const dN=data['nikola']?.[dt.getFullYear()]?.[dt.getMonth()]?.[dt.getDate()]||{};
     const dM=data['mateja']?.[dt.getFullYear()]?.[dt.getMonth()]?.[dt.getDate()]||{};
-    callsN.push(dN.calls||0); callsM.push(dM.calls||0);
-    closeN.push(dN.close||0); closeM.push(dM.close||0);
+    const dD=data['dusica']?.[dt.getFullYear()]?.[dt.getMonth()]?.[dt.getDate()]||{};
+    callsN.push(dN.calls||0); callsM.push(dM.calls||0); callsD.push(dD.calls||0);
+    closeN.push(dN.close||0); closeM.push(dM.close||0); closeD.push(dD.close||0);
   };
 
   if(period==='today'||period==='yesterday'){
     const dt=period==='today'?now:new Date(now.getTime()-86400000);
     labels.push(dt.toLocaleDateString('sr-RS',{day:'2-digit',month:'short'}));
     dayPoint(dt);
-    return{labels,callsN,callsM,closeN,closeM};
+    return{labels,callsN,callsM,callsD,closeN,closeM,closeD};
   }
   if(period==='week'||period==='lastweek'){
     const dow=now.getDay(); const diff=dow===0?6:dow-1;
@@ -2132,7 +2142,7 @@ function buildChartData(data, period) {
       const dt=new Date(start); dt.setDate(dt.getDate()+i);
       labels.push(DAYS[i]); dayPoint(dt);
     }
-    return{labels,callsN,callsM,closeN,closeM};
+    return{labels,callsN,callsM,callsD,closeN,closeM,closeD};
   }
   if(period==='month'||period==='last'){
     let y=currentYear, m=currentMonth;
@@ -2142,39 +2152,41 @@ function buildChartData(data, period) {
       labels.push(String(d));
       const dN=data['nikola']?.[y]?.[m]?.[d]||{};
       const dM=data['mateja']?.[y]?.[m]?.[d]||{};
-      callsN.push(dN.calls||0); callsM.push(dM.calls||0);
-      closeN.push(dN.close||0); closeM.push(dM.close||0);
+      const dD=data['dusica']?.[y]?.[m]?.[d]||{};
+      callsN.push(dN.calls||0); callsM.push(dM.calls||0); callsD.push(dD.calls||0);
+      closeN.push(dN.close||0); closeM.push(dM.close||0); closeD.push(dD.close||0);
     }
-    return{labels,callsN,callsM,closeN,closeM};
+    return{labels,callsN,callsM,callsD,closeN,closeM,closeD};
   }
   // 'all' — by month
   const md={};
-  ['nikola','mateja'].forEach(mb=>{
+  ['nikola','mateja','dusica'].forEach(mb=>{
     Object.entries(data[mb]||{}).forEach(([y,yd])=>{
       Object.entries(yd||{}).forEach(([mo,mdd])=>{
         const key=`${y}-${String(mo).padStart(2,'0')}`;
-        if(!md[key])md[key]={y:+y,m:+mo,N:{calls:0,close:0},M:{calls:0,close:0}};
+        if(!md[key])md[key]={y:+y,m:+mo,N:{calls:0,close:0},M:{calls:0,close:0},D:{calls:0,close:0}};
         Object.values(mdd||{}).forEach(dd=>{
           if(mb==='nikola'){md[key].N.calls+=dd.calls||0;md[key].N.close+=dd.close||0;}
-          else{md[key].M.calls+=dd.calls||0;md[key].M.close+=dd.close||0;}
+          else if(mb==='mateja'){md[key].M.calls+=dd.calls||0;md[key].M.close+=dd.close||0;}
+          else{md[key].D.calls+=dd.calls||0;md[key].D.close+=dd.close||0;}
         });
       });
     });
   });
   Object.entries(md).sort(([a],[b])=>a.localeCompare(b)).forEach(([,v])=>{
     labels.push(MONTHS3[v.m]);
-    callsN.push(v.N.calls); callsM.push(v.M.calls);
-    closeN.push(v.N.close); closeM.push(v.M.close);
+    callsN.push(v.N.calls); callsM.push(v.M.calls); callsD.push(v.D.calls);
+    closeN.push(v.N.close); closeM.push(v.M.close); closeD.push(v.D.close);
   });
-  return{labels,callsN,callsM,closeN,closeM};
+  return{labels,callsN,callsM,callsD,closeN,closeM,closeD};
 }
 
 function initTrendChart(chartData){
   const canvas=document.getElementById('trend-chart');
   if(!canvas)return;
   if(_trendChart){_trendChart.destroy();_trendChart=null;}
-  const {labels,callsN,callsM,closeN,closeM}=chartData;
-  const hasClose=closeN.some(v=>v>0)||closeM.some(v=>v>0);
+  const {labels,callsN,callsM,callsD,closeN,closeM,closeD}=chartData;
+  const hasClose=closeN.some(v=>v>0)||closeM.some(v=>v>0)||(closeD||[]).some(v=>v>0);
   const gridColor='rgba(255,255,255,0.05)';
   const tickColor='#60606c';
   _trendChart=new Chart(canvas.getContext('2d'),{
@@ -2184,9 +2196,11 @@ function initTrendChart(chartData){
       datasets:[
         {label:'Nikola — Pozivi',data:callsN,backgroundColor:'rgba(59,130,246,0.25)',borderColor:'rgba(59,130,246,0.7)',borderWidth:1,borderRadius:4,stack:'calls'},
         {label:'Mateja — Pozivi',data:callsM,backgroundColor:'rgba(168,85,247,0.25)',borderColor:'rgba(168,85,247,0.7)',borderWidth:1,borderRadius:4,stack:'calls'},
+        {label:'Dusica — Pozivi',data:callsD||[],backgroundColor:'rgba(249,115,22,0.25)',borderColor:'rgba(249,115,22,0.7)',borderWidth:1,borderRadius:4,stack:'calls'},
         ...(hasClose?[
           {label:'Nikola — Zatvoreni',data:closeN,backgroundColor:'rgba(34,197,94,0.5)',borderColor:'rgba(34,197,94,0.9)',borderWidth:1,borderRadius:4,type:'line',yAxisID:'y2',tension:.35,pointRadius:3,pointBackgroundColor:'rgba(34,197,94,0.9)'},
           {label:'Mateja — Zatvoreni',data:closeM,backgroundColor:'rgba(59,130,246,0.5)',borderColor:'rgba(96,165,250,0.9)',borderWidth:1,borderRadius:4,type:'line',yAxisID:'y2',tension:.35,pointRadius:3,pointBackgroundColor:'rgba(96,165,250,0.9)'},
+          {label:'Dusica — Zatvoreni',data:closeD||[],backgroundColor:'rgba(249,115,22,0.5)',borderColor:'rgba(249,115,22,0.9)',borderWidth:1,borderRadius:4,type:'line',yAxisID:'y2',tension:.35,pointRadius:3,pointBackgroundColor:'rgba(249,115,22,0.9)'},
         ]:[])
       ]
     },
@@ -2238,18 +2252,18 @@ function getStatsForPeriod(data, period) {
   const tod = {y:now.getFullYear(), m:now.getMonth(), d:now.getDate()};
 
   if(period==='today'){
-    return { sN:sumRange(data,'nikola',tod,tod), sM:sumRange(data,'mateja',tod,tod) };
+    return { sN:sumRange(data,'nikola',tod,tod), sM:sumRange(data,'mateja',tod,tod), sD:sumRange(data,'dusica',tod,tod) };
   }
   if(period==='yesterday'){
     const yy = new Date(now); yy.setDate(yy.getDate()-1);
     const yd = {y:yy.getFullYear(), m:yy.getMonth(), d:yy.getDate()};
-    return { sN:sumRange(data,'nikola',yd,yd), sM:sumRange(data,'mateja',yd,yd) };
+    return { sN:sumRange(data,'nikola',yd,yd), sM:sumRange(data,'mateja',yd,yd), sD:sumRange(data,'dusica',yd,yd) };
   }
   if(period==='week'){
     const dow = now.getDay(); const diff = dow===0?6:dow-1;
     const mon = new Date(now); mon.setDate(mon.getDate()-diff);
     const start = {y:mon.getFullYear(), m:mon.getMonth(), d:mon.getDate()};
-    return { sN:sumRange(data,'nikola',start,tod), sM:sumRange(data,'mateja',start,tod) };
+    return { sN:sumRange(data,'nikola',start,tod), sM:sumRange(data,'mateja',start,tod), sD:sumRange(data,'dusica',start,tod) };
   }
   if(period==='lastweek'){
     const dow = now.getDay(); const diff = dow===0?6:dow-1;
@@ -2258,26 +2272,26 @@ function getStatsForPeriod(data, period) {
     const lastMon = new Date(thisMon); lastMon.setDate(lastMon.getDate()-7);
     const s = {y:lastMon.getFullYear(), m:lastMon.getMonth(), d:lastMon.getDate()};
     const e = {y:lastSun.getFullYear(), m:lastSun.getMonth(), d:lastSun.getDate()};
-    return { sN:sumRange(data,'nikola',s,e), sM:sumRange(data,'mateja',s,e) };
+    return { sN:sumRange(data,'nikola',s,e), sM:sumRange(data,'mateja',s,e), sD:sumRange(data,'dusica',s,e) };
   }
   if(period==='month'){
-    return { sN:sum(gm(data,'nikola',currentYear,currentMonth)), sM:sum(gm(data,'mateja',currentYear,currentMonth)) };
+    return { sN:sum(gm(data,'nikola',currentYear,currentMonth)), sM:sum(gm(data,'mateja',currentYear,currentMonth)), sD:sum(gm(data,'dusica',currentYear,currentMonth)) };
   }
   if(period==='last'){
     let lm=currentMonth-1, ly=currentYear; if(lm<0){lm=11;ly--;}
-    return { sN:sum(gm(data,'nikola',ly,lm)), sM:sum(gm(data,'mateja',ly,lm)) };
+    return { sN:sum(gm(data,'nikola',ly,lm)), sM:sum(gm(data,'mateja',ly,lm)), sD:sum(gm(data,'dusica',ly,lm)) };
   }
   // 'all'
-  const aggN={}, aggM={};
-  ['nikola','mateja'].forEach(mb=>{
-    const dest = mb==='nikola'?aggN:aggM;
+  const aggN={}, aggM={}, aggD={};
+  ['nikola','mateja','dusica'].forEach(mb=>{
+    const dest = mb==='nikola'?aggN:mb==='mateja'?aggM:aggD;
     Object.entries(data[mb]||{}).forEach(([y,yd])=>{
       Object.entries(yd||{}).forEach(([mo,md])=>{
         Object.entries(md||{}).forEach(([d,dd])=>{ dest[`${y}-${mo}-${d}`]=dd; });
       });
     });
   });
-  return { sN:sum(aggN), sM:sum(aggM) };
+  return { sN:sum(aggN), sM:sum(aggM), sD:sum(aggD) };
 }
 
 const PERIOD_LABELS = {
@@ -2299,30 +2313,53 @@ async function renderWolfTab(){
 
   const sN=sum(gm(data,'nikola',currentYear,currentMonth));
   const sM=sum(gm(data,'mateja',currentYear,currentMonth));
-  const scN=wolfScore(sN), scM=wolfScore(sM);
-  const leader=scN>scM?'nikola':scM>scN?'mateja':'tie';
+  const sD=sum(gm(data,'dusica',currentYear,currentMonth));
+  const scN=wolfScore(sN), scM=wolfScore(sM), scD=wolfScore(sD);
+  const maxSc=Math.max(scN,scM,scD);
+  const leader = maxSc===0 ? 'tie'
+    : (scN===maxSc && scM!==maxSc && scD!==maxSc) ? 'nikola'
+    : (scM===maxSc && scN!==maxSc && scD!==maxSc) ? 'mateja'
+    : (scD===maxSc && scN!==maxSc && scM!==maxSc) ? 'dusica'
+    : 'tie';
+  const leaderScore = leader==='nikola'?scN:leader==='mateja'?scM:leader==='dusica'?scD:0;
+  const leaderColor = leader==='nikola'?'var(--nikola)':leader==='mateja'?'var(--mateja)':leader==='dusica'?'var(--dusica)':'var(--text)';
+  const leaderName = leader==='nikola'?'Nikola':leader==='mateja'?'Mateja':leader==='dusica'?'Dusica':'Remi';
 
   // Build months with data
   const months=[];
   for(let m=0;m<=11;m++){
     const mn=sum(gm(data,'nikola',currentYear,m));
     const mm=sum(gm(data,'mateja',currentYear,m));
-    if(mn.calls===0&&mm.calls===0)continue;
-    const sn=wolfScore(mn),sm=wolfScore(mm);
-    months.push({month:m,n:mn,m:mm,sn,sm,winner:sn>sm?'n':sm>sn?'m':'tie'});
+    const md=sum(gm(data,'dusica',currentYear,m));
+    if(mn.calls===0&&mm.calls===0&&md.calls===0)continue;
+    const sn=wolfScore(mn),sm=wolfScore(mm),sd=wolfScore(md);
+    const mx=Math.max(sn,sm,sd);
+    const winner = mx===0 ? 'tie'
+      : (sn===mx && sm!==mx && sd!==mx) ? 'n'
+      : (sm===mx && sn!==mx && sd!==mx) ? 'm'
+      : (sd===mx && sn!==mx && sm!==mx) ? 'd'
+      : 'tie';
+    months.push({month:m,n:mn,m:mm,d:md,sn,sm,sd,winner});
   }
 
   const winsN=months.filter(x=>x.winner==='n').length;
   const winsM=months.filter(x=>x.winner==='m').length;
+  const winsD=months.filter(x=>x.winner==='d').length;
 
   // Win streak
-  let streakN=0,streakM=0;
+  let streakN=0,streakM=0,streakD=0;
   for(let i=months.length-1;i>=0;i--){
-    if(months[i].winner==='n'){if(streakM===0)streakN++;else break;}
-    else if(months[i].winner==='m'){if(streakN===0)streakM++;else break;}
+    const w=months[i].winner;
+    if(w==='n'){if(streakM===0&&streakD===0)streakN++;else break;}
+    else if(w==='m'){if(streakN===0&&streakD===0)streakM++;else break;}
+    else if(w==='d'){if(streakN===0&&streakM===0)streakD++;else break;}
     else break;
   }
-  const streaker=streakN>1?`🔥 Nikola ${streakN} meseca zaredom`:streakM>1?`🔥 Mateja ${streakM} meseca zaredom`:'';
+  const streaker = streakN>1?`🔥 Nikola ${streakN} meseca zaredom`
+    : streakM>1?`🔥 Mateja ${streakM} meseca zaredom`
+    : streakD>1?`🔥 Dusica ${streakD} meseca zaredom`
+    : '';
+  const maxWins=Math.max(winsN,winsM,winsD);
 
   const M3=['Jan','Feb','Mar','Apr','Maj','Jun','Jul','Avg','Sep','Okt','Nov','Dec'];
 
@@ -2331,11 +2368,11 @@ async function renderWolfTab(){
     <!-- HERO -->
     <div class="wolf-hero">
       <div class="wolf-badge">🐺 Top Wolf · ${M3[currentMonth]} ${currentYear}</div>
-      <div class="wolf-hero-title" style="color:${leader==='nikola'?'var(--nikola)':leader==='mateja'?'var(--mateja)':'var(--text)'}">
-        ${leader==='nikola'?'Nikola':leader==='mateja'?'Mateja':'Remi'}
+      <div class="wolf-hero-title" style="color:${leaderColor}">
+        ${leaderName}
       </div>
       <div class="wolf-hero-sub">
-        ${leader!=='tie'?`${Math.round(leader==='nikola'?scN:scM)} bodova ovog meseca`:'Izjednačeno — niko se nije istakao'}
+        ${leader!=='tie'?`${Math.round(leaderScore)} bodova ovog meseca`:'Izjednačeno — niko se nije istakao'}
       </div>
 
       <div class="wolf-score-row">
@@ -2351,7 +2388,6 @@ async function renderWolfTab(){
             <span>${sN.calls} poz.</span>
           </div>
         </div>
-        <div class="wolf-vs-sep">VS</div>
         <div class="wolf-score-card ${leader==='mateja'?'wolf-leader':''}">
           ${leader==='mateja'?'<div class="wolf-crown">👑</div>':''}
           <div class="wolf-sc-av mateja"><img src="mateja.png" alt="M"/></div>
@@ -2364,6 +2400,18 @@ async function renderWolfTab(){
             <span>${sM.calls} poz.</span>
           </div>
         </div>
+        <div class="wolf-score-card ${leader==='dusica'?'wolf-leader':''}">
+          ${leader==='dusica'?'<div class="wolf-crown">👑</div>':''}
+          <div class="wolf-sc-av dusica"><img src="dusica.png" alt="D"/></div>
+          <div class="wolf-sc-name">Dusica</div>
+          <div class="wolf-sc-pts" style="color:var(--dusica)">${Math.round(scD)}</div>
+          <div class="wolf-sc-label">bodova</div>
+          <div class="wolf-sc-stats">
+            <span>${sD.close} zat.</span>
+            <span>${pct(sD.close,sD.pickups)}% CR</span>
+            <span>${sD.calls} poz.</span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2371,14 +2419,19 @@ async function renderWolfTab(){
     <div class="wolf-section">
       <div class="wolf-sec-lbl">Sezona ${currentYear}</div>
       <div class="wolf-record-row">
-        <div class="wolf-record ${winsN>=winsM&&winsN>0?'leading':''}" style="--c:var(--nikola)">
+        <div class="wolf-record ${winsN===maxWins&&winsN>0?'leading':''}" style="--c:var(--nikola)">
           <div class="wolf-rec-val">${winsN}</div>
           <div class="wolf-rec-lbl">Nikola</div>
         </div>
         <div class="wolf-record-vs">:</div>
-        <div class="wolf-record ${winsM>winsN&&winsM>0?'leading':''}" style="--c:var(--mateja)">
+        <div class="wolf-record ${winsM===maxWins&&winsM>0?'leading':''}" style="--c:var(--mateja)">
           <div class="wolf-rec-val">${winsM}</div>
           <div class="wolf-rec-lbl">Mateja</div>
+        </div>
+        <div class="wolf-record-vs">:</div>
+        <div class="wolf-record ${winsD===maxWins&&winsD>0?'leading':''}" style="--c:var(--dusica)">
+          <div class="wolf-rec-val">${winsD}</div>
+          <div class="wolf-rec-lbl">Dusica</div>
         </div>
       </div>
       ${streaker?`<div class="wolf-streak">${streaker}</div>`:''}
@@ -2389,25 +2442,37 @@ async function renderWolfTab(){
       <div class="wolf-sec-lbl">Mesečni Obračun</div>
       ${months.length===0?`<div class="wolf-empty">Nema podataka za ${currentYear}</div>`:`
       <div class="wolf-month-list">
-        ${[...months].reverse().map(m=>`
+        ${[...months].reverse().map(m=>{
+          const totSc=m.sn+m.sm+m.sd;
+          const wN=totSc>0?Math.round(m.sn/totSc*100):34;
+          const wM=totSc>0?Math.round(m.sm/totSc*100):33;
+          const wD=Math.max(0,100-wN-wM);
+          const medal=(w)=>m.winner===w?'🥇':m.winner==='tie'?'🤝':'🥈';
+          return `
           <div class="wolf-month-row">
             <div class="wolf-month-name">${M3[m.month]}</div>
             <div class="wolf-month-stat ${m.winner==='n'?'wolf-win-n':''}">
-              ${m.winner==='n'?'🥇':m.winner==='tie'?'🤝':'🥈'}
+              ${medal('n')}
               <span>${m.n.close}</span>
               <span class="wolf-month-sub">${pct(m.n.close,m.n.pickups)}%</span>
             </div>
             <div class="wolf-month-bar-wrap">
-              <div class="wolf-bar-n" style="width:${m.sn+m.sm>0?Math.round(m.sn/(m.sn+m.sm)*100):50}%"></div>
-              <div class="wolf-bar-m" style="width:${m.sn+m.sm>0?Math.round(m.sm/(m.sn+m.sm)*100):50}%"></div>
+              <div class="wolf-bar-n" style="width:${wN}%"></div>
+              <div class="wolf-bar-m" style="width:${wM}%"></div>
+              <div class="wolf-bar-d" style="width:${wD}%"></div>
             </div>
             <div class="wolf-month-stat ${m.winner==='m'?'wolf-win-m':''}">
-              <span class="wolf-month-sub">${pct(m.m.close,m.m.pickups)}%</span>
               <span>${m.m.close}</span>
-              ${m.winner==='m'?'🥇':m.winner==='tie'?'🤝':'🥈'}
+              <span class="wolf-month-sub">${pct(m.m.close,m.m.pickups)}%</span>
+              ${medal('m')}
+            </div>
+            <div class="wolf-month-stat ${m.winner==='d'?'wolf-win-d':''}">
+              <span>${m.d.close}</span>
+              <span class="wolf-month-sub">${pct(m.d.close,m.d.pickups)}%</span>
+              ${medal('d')}
             </div>
           </div>
-        `).join('')}
+        `;}).join('')}
       </div>`}
     </div>
 
@@ -2420,8 +2485,7 @@ async function renderMetricsTab(){
 
   const [data, sheetRows] = await Promise.all([loadData(), fetchSheetData().catch(()=>[])]);
 
-  const { sN, sM } = getStatsForPeriod(data, metricsPeriod);
-  const sD = sum(gm(data,'dusica',currentYear,currentMonth));
+  const { sN, sM, sD } = getStatsForPeriod(data, metricsPeriod);
 
   const tot={calls:sN.calls+sM.calls+sD.calls,pickups:sN.pickups+sM.pickups+sD.pickups,dq:sN.dq+sM.dq+sD.dq,followup:sN.followup+sM.followup+sD.followup,close:sN.close+sM.close+sD.close};
   const pr=pct(tot.pickups,tot.calls);
@@ -2585,7 +2649,7 @@ async function renderCommissionSection(){
     return{total,byDeal,count:memberDeals.length};
   };
 
-  const cN=calcComm('nikola'), cM=calcComm('mateja');
+  const cN=calcComm('nikola'), cM=calcComm('mateja'), cD=calcComm('dusica');
 
   const dealRows=(byDeal)=>Object.entries(byDeal).map(([key,cnt])=>{
     const d=DEALS[key];
@@ -2614,6 +2678,7 @@ async function renderCommissionSection(){
     <div class="comm-grid">
       ${commCell('Nikola','nikola',cN,'var(--nikola)')}
       ${commCell('Mateja','mateja',cM,'var(--mateja)')}
+      ${commCell('Dusica','dusica',cD,'var(--dusica)')}
     </div>
   </div>`;
 }
@@ -3337,13 +3402,15 @@ function initChart(data) {
   if (currentTab==='team'){
     const dmN=gm(data,'nikola',currentYear,currentMonth);
     const dmM=gm(data,'mateja',currentYear,currentMonth);
+    const dmD=gm(data,'dusica',currentYear,currentMonth);
     datasets=[
       {label:'Nikola',data:labels.map(d=>dmN[d]?.calls||0),backgroundColor:'rgba(59,130,246,.75)',borderRadius:4,stack:'s'},
-      {label:'Mateja',data:labels.map(d=>dmM[d]?.calls||0),backgroundColor:'rgba(168,85,247,.75)',borderRadius:4,stack:'s'}
+      {label:'Mateja',data:labels.map(d=>dmM[d]?.calls||0),backgroundColor:'rgba(168,85,247,.75)',borderRadius:4,stack:'s'},
+      {label:'Dusica',data:labels.map(d=>dmD[d]?.calls||0),backgroundColor:'rgba(249,115,22,.75)',borderRadius:4,stack:'s'}
     ];
   } else {
     const dm=gm(data,currentTab,currentYear,currentMonth);
-    const rgb=currentTab==='nikola'?'59,130,246':'168,85,247';
+    const rgb=currentTab==='nikola'?'59,130,246':currentTab==='dusica'?'249,115,22':'168,85,247';
     datasets=[
       {label:'Pozivi',data:labels.map(d=>dm[d]?.calls||0),backgroundColor:`rgba(${rgb},.7)`,borderRadius:4},
       {label:'Javljanja',data:labels.map(d=>dm[d]?.pickups||0),backgroundColor:`rgba(${rgb},.3)`,borderRadius:4},
