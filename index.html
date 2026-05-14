@@ -38,6 +38,7 @@
   --yellow:   #eab308;
   --nikola:   #3b82f6;
   --mateja:   #a855f7;
+  --dusica:   #f97316;
   --r:        14px;
   --font:     'Inter', system-ui, sans-serif;
 }
@@ -107,6 +108,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 }
 .tab.active[data-member="nikola"] { color: var(--nikola); }
 .tab.active[data-member="mateja"] { color: var(--mateja); }
+.tab.active[data-member="dusica"] { color: var(--dusica); }
+[data-member="dusica"] .tab-pip { background: var(--dusica); }
 .tab-pip { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
 [data-member="nikola"] .tab-pip { background: var(--nikola); }
 [data-member="mateja"] .tab-pip { background: var(--mateja); }
@@ -193,6 +196,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .mc-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
 .mc-av.nikola { box-shadow: 0 0 0 2px rgba(59,130,246,.45), 0 0 20px rgba(59,130,246,.2); }
 .mc-av.mateja { box-shadow: 0 0 0 2px rgba(168,85,247,.45), 0 0 20px rgba(168,85,247,.2); }
+.mc-av.dusica { box-shadow: 0 0 0 2px rgba(249,115,22,.45), 0 0 20px rgba(249,115,22,.2); }
 .mc-name { font-size: 18px; font-weight: 900; line-height: 1.1; letter-spacing: -.3px; }
 .mc-role { font-size: 10px; color: var(--muted); font-weight: 600; margin-top: 4px; letter-spacing: 1px; text-transform: uppercase; }
 .mc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -456,6 +460,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 }
 .lead-card.assigned-nikola { --lc:var(--nikola); }
 .lead-card.assigned-mateja { --lc:var(--mateja); }
+.lead-card.assigned-dusica { --lc:var(--dusica); }
 .lead-card.status-Closed   { --lc:var(--green); }
 .lead-card.status-DQ       { --lc:var(--red); opacity:.5; }
 
@@ -469,6 +474,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 }
 .lc-av.av-n { background:rgba(59,130,246,.12);  color:var(--nikola); border-color:rgba(59,130,246,.25); }
 .lc-av.av-m { background:rgba(168,85,247,.12); color:var(--mateja); border-color:rgba(168,85,247,.25); }
+.lc-av.av-d { background:rgba(249,115,22,.12); color:var(--dusica); border-color:rgba(249,115,22,.25); }
 .lc-info { flex:1; min-width:0; }
 .lc-name { font-size:16px; font-weight:800; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; letter-spacing:-.2px; }
 .lc-meta { display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-top:5px; font-size:11px; color:var(--muted); }
@@ -515,6 +521,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .lc-ab:hover { border-color:var(--b2); color:var(--text); }
 .lc-ab.on-n  { background:rgba(59,130,246,.12);  color:var(--nikola); border-color:rgba(59,130,246,.3); }
 .lc-ab.on-m  { background:rgba(168,85,247,.12); color:var(--mateja); border-color:rgba(168,85,247,.3); }
+.lc-ab.on-d  { background:rgba(249,115,22,.12); color:var(--dusica); border-color:rgba(249,115,22,.3); }
 .lc-ab img   { width:18px; height:18px; border-radius:50%; object-fit:cover; }
 .lc-stsel {
   padding:8px 10px; border-radius:99px; border:1px solid var(--b);
@@ -665,6 +672,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 }
 .ltr-av.av-n { background: rgba(59,130,246,.12); color: var(--nikola); border-color: rgba(59,130,246,.25); }
 .ltr-av.av-m { background: rgba(168,85,247,.12); color: var(--mateja); border-color: rgba(168,85,247,.25); }
+.ltr-av.av-d { background: rgba(249,115,22,.12); color: var(--dusica); border-color: rgba(249,115,22,.25); }
 .ltr-name { font-size: 13px; font-weight: 700; line-height: 1.2; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 .ltr-sub  { font-size: 10px; color: var(--muted); margin-top: 1px; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 .ltr-type { display: inline-flex; padding: 2px 8px; border-radius: 99px; font-size: 9px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; }
@@ -690,6 +698,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .ltr-ab:hover { border-color: var(--b2); color: var(--text); }
 .ltr-ab.on-n { background: rgba(59,130,246,.15); color: var(--nikola); border-color: rgba(59,130,246,.3); }
 .ltr-ab.on-m { background: rgba(168,85,247,.15); color: var(--mateja); border-color: rgba(168,85,247,.3); }
+.ltr-ab.on-d { background: rgba(249,115,22,.15); color: var(--dusica); border-color: rgba(249,115,22,.3); }
 .ltr-fu {
   padding: 5px 8px; border-radius: 8px; border: 1px solid var(--b);
   background: var(--s2); color: var(--text); font-family: var(--font);
@@ -728,6 +737,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 }
 .ldp-av.av-n { background: rgba(59,130,246,.12); color: var(--nikola); border-color: rgba(59,130,246,.25); }
 .ldp-av.av-m { background: rgba(168,85,247,.12); color: var(--mateja); border-color: rgba(168,85,247,.25); }
+.ldp-av.av-d { background: rgba(249,115,22,.12); color: var(--dusica); border-color: rgba(249,115,22,.25); }
 .ldp-name { font-size: 16px; font-weight: 800; letter-spacing: -.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ldp-meta { font-size: 11px; color: var(--muted); margin-top: 3px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 100%; }
 .ldp-close {
@@ -792,6 +802,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .ldp-assign-btn:hover { border-color:var(--b2); color:var(--text); }
 .ldp-ab-n { background:rgba(59,130,246,.12); color:var(--nikola); border-color:rgba(59,130,246,.3); }
 .ldp-ab-m { background:rgba(168,85,247,.12); color:var(--mateja); border-color:rgba(168,85,247,.3); }
+.ldp-ab-d { background:rgba(249,115,22,.12); color:var(--dusica); border-color:rgba(249,115,22,.3); }
 
 @media (max-width: 640px) {
   .leads-stat-bar { flex-wrap: wrap; }
@@ -928,6 +939,9 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .wolf-sc-av img { width:100%; height:100%; object-fit:cover; }
 .wolf-sc-av.nikola { box-shadow:0 0 0 2px rgba(59,130,246,.5); }
 .wolf-sc-av.mateja { box-shadow:0 0 0 2px rgba(168,85,247,.5); }
+.wolf-sc-av.dusica { box-shadow:0 0 0 2px rgba(249,115,22,.5); }
+.wolf-bar-d { background:var(--dusica); height:100%; }
+.wolf-win-d { color:var(--dusica); }
 .wolf-sc-name { font-size:10px; font-weight:700; color:var(--muted); letter-spacing:.5px; text-transform:uppercase; }
 .wolf-sc-pts { font-size:34px; font-weight:900; letter-spacing:-1.5px; line-height:1; margin:4px 0 2px; }
 .wolf-sc-label { font-size:8px; color:var(--muted); font-weight:600; letter-spacing:1px; text-transform:uppercase; }
@@ -1424,6 +1438,9 @@ button, .tab, .btn, .btn-add, .cal-cell, .log-table tbody tr { touch-action: man
       <button class="tab" data-member="mateja" onclick="setTab('mateja')">
         <span class="tab-pip"></span> Mateja
       </button>
+      <button class="tab" data-member="dusica" onclick="setTab('dusica')">
+        <span class="tab-pip"></span> Dusica
+      </button>
       <button class="tab" data-member="leads" onclick="setTab('leads')">
         <span class="tab-pip" style="background:var(--green)"></span> Leads
       </button>
@@ -1465,6 +1482,7 @@ button, .tab, .btn, .btn-add, .cal-cell, .log-table tbody tr { touch-action: man
           <select id="fMember">
             <option value="nikola">Nikola</option>
             <option value="mateja">Mateja</option>
+            <option value="dusica">Dusica</option>
           </select>
         </div>
         <div class="f">
@@ -1530,6 +1548,13 @@ button, .tab, .btn, .btn-add, .cal-cell, .log-table tbody tr { touch-action: man
       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
     </svg>
     <span>Mateja</span>
+  </button>
+  <button class="bnav-btn" data-tab="dusica" onclick="setTab('dusica')" style="color:var(--dusica)">
+    <div class="bnav-pip"></div>
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+    </svg>
+    <span>Dusica</span>
   </button>
   <button class="bnav-btn" data-tab="leads" onclick="setTab('leads')" style="color:var(--green)">
     <div class="bnav-pip"></div>
@@ -1841,7 +1866,7 @@ function renderMain(data) {
 
 function renderMember(data, member) {
   const dm = gm(data,member,currentYear,currentMonth);
-  const color = member==='nikola'?'var(--nikola)':'var(--mateja)';
+  const color = member==='nikola'?'var(--nikola)':member==='mateja'?'var(--mateja)':'var(--dusica)';
   return `
     <div data-role="main">
       ${renderCal(dm,member)}
@@ -1864,10 +1889,12 @@ function renderMember(data, member) {
 function renderTeam(data) {
   const sN = sum(gm(data,'nikola',currentYear,currentMonth));
   const sM = sum(gm(data,'mateja',currentYear,currentMonth));
+  const sD = sum(gm(data,'dusica',currentYear,currentMonth));
   return `
     <div data-role="side" class="side-panel">
       ${renderMemberCard('nikola',sN)}
       ${renderMemberCard('mateja',sM)}
+      ${renderMemberCard('dusica',sD)}
       <div class="card">
         <div class="card-head"><div class="card-title">Ko je Jači?</div></div>
         <div class="card-body">
@@ -1910,7 +1937,7 @@ function renderTeam(data) {
 function renderMemberCard(member, s) {
   const pr = pct(s.pickups,s.calls);
   const cr = pct(s.close,s.pickups);
-  const color = member==='nikola'?'var(--nikola)':'var(--mateja)';
+  const color = member==='nikola'?'var(--nikola)':member==='mateja'?'var(--mateja)':'var(--dusica)';
   return `
     <div class="mc">
       <div class="mc-head">
@@ -2394,8 +2421,9 @@ async function renderMetricsTab(){
   const [data, sheetRows] = await Promise.all([loadData(), fetchSheetData().catch(()=>[])]);
 
   const { sN, sM } = getStatsForPeriod(data, metricsPeriod);
+  const sD = sum(gm(data,'dusica',currentYear,currentMonth));
 
-  const tot={calls:sN.calls+sM.calls,pickups:sN.pickups+sM.pickups,dq:sN.dq+sM.dq,followup:sN.followup+sM.followup,close:sN.close+sM.close};
+  const tot={calls:sN.calls+sM.calls+sD.calls,pickups:sN.pickups+sM.pickups+sD.pickups,dq:sN.dq+sM.dq+sD.dq,followup:sN.followup+sM.followup+sD.followup,close:sN.close+sM.close+sD.close};
   const pr=pct(tot.pickups,tot.calls);
   const cr=pct(tot.close,tot.pickups);
 
@@ -2484,6 +2512,7 @@ async function renderMetricsTab(){
       <div class="metrics-grid g2">
         ${closerBlock('Nikola','nikola',sN,'var(--nikola)')}
         ${closerBlock('Mateja','mateja',sM,'var(--mateja)')}
+        ${closerBlock('Dusica','dusica',sD,'var(--dusica)')}
       </div>
     </div>
 
@@ -2693,7 +2722,8 @@ async function toggleAdsView(){
 
 async function loadCampaignData(){
   const {data,error}=await sb.from('ghl_leads')
-    .select('utm_campaign,utm_content,utm_source,utm_medium,status,deal,lead_type')
+    .select('utm_campaign,utm_content,utm_source,utm_medium,status,deal,lead_type,tags')
+    .overlaps('tags',['webinar-lead','qualified-webinar','disqualified-webinar'])
     .limit(5000);
   if(error||!data) return [];
   const isId=v=>v&&/^\d{10,}$/.test(v.trim());
@@ -2807,12 +2837,14 @@ function renderLeads(all){
   let leads=searched;
   if(leadsFilter==='nikola')       leads=searched.filter(l=>l.assigned_to==='nikola');
   else if(leadsFilter==='mateja')   leads=searched.filter(l=>l.assigned_to==='mateja');
+  else if(leadsFilter==='dusica')   leads=searched.filter(l=>l.assigned_to==='dusica');
   else if(leadsFilter==='unassigned') leads=searched.filter(l=>!l.assigned_to);
 
   const fc={
     all:searched.length,
     nikola:searched.filter(l=>l.assigned_to==='nikola').length,
     mateja:searched.filter(l=>l.assigned_to==='mateja').length,
+    dusica:searched.filter(l=>l.assigned_to==='dusica').length,
     unassigned:searched.filter(l=>!l.assigned_to).length
   };
 
@@ -2823,7 +2855,7 @@ function renderLeads(all){
 
   const rows=leads.map(c=>{
     const initials=(c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const avCls=c.assigned_to==='nikola'?'av-n':c.assigned_to==='mateja'?'av-m':'';
+    const avCls=c.assigned_to==='nikola'?'av-n':c.assigned_to==='mateja'?'av-m':c.assigned_to==='dusica'?'av-d':'';
     const meta=[c.phone,c.instagram?`@${c.instagram.replace('@','')}`:''].filter(Boolean).join(' · ');
     const stOpts=['Novi','Follow Up','Closed','DQ'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('');
     let fuCls=''; if(c.follow_up_date){fuCls=c.follow_up_date===todayStr?'fu-today':c.follow_up_date<todayStr?'fu-overdue':'';}
@@ -2840,6 +2872,7 @@ function renderLeads(all){
         <div class="ltr-assign">
           <button class="ltr-ab ${c.assigned_to==='nikola'?'on-n':''}" onclick="assignLead('${esc(c.id)}','nikola')">N</button>
           <button class="ltr-ab ${c.assigned_to==='mateja'?'on-m':''}" onclick="assignLead('${esc(c.id)}','mateja')">M</button>
+          <button class="ltr-ab ${c.assigned_to==='dusica'?'on-d':''}" onclick="assignLead('${esc(c.id)}','dusica')">D</button>
         </div>
       </td>
       <td class="col-desk" onclick="event.stopPropagation()">
@@ -2888,6 +2921,7 @@ function renderLeads(all){
         <button class="filter-btn ${leadsFilter==='all'?'active':''}" data-filter="all" onclick="filterLeads('all')">Svi (${fc.all})</button>
         <button class="filter-btn ${leadsFilter==='nikola'?'active':''}" data-filter="nikola" onclick="filterLeads('nikola')">Nikola</button>
         <button class="filter-btn ${leadsFilter==='mateja'?'active':''}" data-filter="mateja" onclick="filterLeads('mateja')">Mateja</button>
+        <button class="filter-btn ${leadsFilter==='dusica'?'active':''}" data-filter="dusica" onclick="filterLeads('dusica')">Dusica</button>
         <button class="filter-btn ${leadsFilter==='unassigned'?'active':''}" data-filter="unassigned" onclick="filterLeads('unassigned')">Nedodeljeni</button>
       </div>
       <button class="ads-view-btn ${leadsView==='ads'?'active':''}" onclick="toggleAdsView()">
@@ -2921,7 +2955,7 @@ function openLeadDetail(id){
   currentLeadId=id;
   const todayStr=new Date().toISOString().slice(0,10);
   const initials=(c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const avCls=c.assigned_to==='nikola'?'av-n':c.assigned_to==='mateja'?'av-m':'';
+  const avCls=c.assigned_to==='nikola'?'av-n':c.assigned_to==='mateja'?'av-m':c.assigned_to==='dusica'?'av-d':'';
   const typePillMap={qualified:'<span class="ltr-type type-q">Qualified</span>',disqualified:'<span class="ltr-type type-dq">Disqualified</span>',webinar_lead:'<span class="ltr-type type-wb">Webinar</span>',lead_magnet:'<span class="ltr-type type-lm">Lead Magnet</span>'};
   const stOpts=['Novi','Follow Up','Closed','DQ'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('');
   let fuCls=''; if(c.follow_up_date){fuCls=c.follow_up_date===todayStr?'fu-today':c.follow_up_date<todayStr?'fu-overdue':'';}
@@ -2954,6 +2988,9 @@ function openLeadDetail(id){
         </button>
         <button class="ldp-assign-btn ${c.assigned_to==='mateja'?'ldp-ab-m':''}" onclick="assignLeadPanel('${esc(c.id)}','mateja')">
           <span style="font-size:15px;font-weight:900;font-family:var(--font)">M</span> Mateja
+        </button>
+        <button class="ldp-assign-btn ${c.assigned_to==='dusica'?'ldp-ab-d':''}" onclick="assignLeadPanel('${esc(c.id)}','dusica')">
+          <span style="font-size:15px;font-weight:900;font-family:var(--font)">D</span> Dusica
         </button>
       </div>
       <div style="margin-top:12px">${typePillMap[c.lead_type]||''}</div>
@@ -3016,7 +3053,7 @@ function renderLeadCard(lead, subTab){
   // Avatar initials
   const words=(lead.name||'?').trim().split(/\s+/);
   const initials=(words[0]?.[0]||'')+(words[1]?.[0]||'');
-  const avCls=assigned==='nikola'?'av-n':assigned==='mateja'?'av-m':'';
+  const avCls=assigned==='nikola'?'av-n':assigned==='mateja'?'av-m':assigned==='dusica'?'av-d':'';
 
   // Status pill
   const stPillCls={'Novi':'s-novi','Follow Up':'s-followup','Closed':'s-closed','DQ':'s-dq'}[st]||'s-novi';
@@ -3061,6 +3098,9 @@ function renderLeadCard(lead, subTab){
         </button>
         <button class="lc-ab ${assigned==='mateja'?'on-m':''}" onclick="assignLead('${esc(lead.id)}','mateja')">
           <img src="mateja.png" onerror="this.style.display='none'"/> Mateja
+        </button>
+        <button class="lc-ab ${assigned==='dusica'?'on-d':''}" onclick="assignLead('${esc(lead.id)}','dusica')">
+          <img src="dusica.png" onerror="this.style.display='none'"/> Dusica
         </button>
       </div>
       <select class="lc-stsel" onchange="updateLeadStatus('${esc(lead.id)}',this.value)">
