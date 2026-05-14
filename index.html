@@ -2694,7 +2694,6 @@ async function toggleAdsView(){
 async function loadCampaignData(){
   const {data,error}=await sb.from('ghl_leads')
     .select('utm_campaign,utm_content,utm_source,utm_medium,status,deal,lead_type')
-    .not('utm_campaign','is',null)
     .limit(5000);
   if(error||!data) return [];
   const isId=v=>v&&/^\d{10,}$/.test(v.trim());
@@ -2703,10 +2702,11 @@ async function loadCampaignData(){
   const map={};
   data.forEach(r=>{
     const content=fmt(r.utm_content);
-    const key=(content||'').toLowerCase()||'unknown';
+    const hasUtm=!!(r.utm_campaign||r.utm_content||r.utm_source);
+    const key=hasUtm?(content||'').toLowerCase()||'no-content':'organic';
     if(!map[key]) map[key]={
-      content:content||'Nepoznat oglas',
-      campaign:fmtCampaign(r.utm_campaign),
+      content:hasUtm?(content||'Nepoznat oglas'):'Organic / Direct',
+      campaign:hasUtm?fmtCampaign(r.utm_campaign):'',
       source:(r.utm_source||'').toLowerCase().replace(/^ig$/,'instagram'),
       leads:0, closes:0
     };
