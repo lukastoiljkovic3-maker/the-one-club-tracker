@@ -2698,16 +2698,16 @@ async function loadCampaignData(){
     .limit(5000);
   if(error||!data) return [];
   const isId=v=>v&&/^\d{10,}$/.test(v.trim());
+  const fmt=v=>!v||isId(v)?null:v;
   const fmtCampaign=v=>!v||isId(v)?'Nepoznata kampanja':v.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
-  const fmtContent=v=>!v||isId(v)?'':v;
   const map={};
   data.forEach(r=>{
-    const key=(r.utm_campaign||'').toLowerCase()||'unknown';
+    const content=fmt(r.utm_content);
+    const key=(content||'').toLowerCase()||'unknown';
     if(!map[key]) map[key]={
+      content:content||'Nepoznat oglas',
       campaign:fmtCampaign(r.utm_campaign),
-      content:fmtContent(r.utm_content),
       source:(r.utm_source||'').toLowerCase().replace(/^ig$/,'instagram'),
-      medium:r.utm_medium||'',
       leads:0, closes:0
     };
     map[key].leads++;
@@ -2730,7 +2730,7 @@ async function renderAdsView(){
     const cvrCls=cvr>=10?'cvr-high':cvr>=5?'cvr-mid':'cvr-low';
     const barW=Math.round(c.leads/maxLeads*100);
     return `<tr>
-      <td><div class="cam-name">${esc(c.campaign)}</div>${c.content?`<div class="cam-sub">${esc(c.content)}</div>`:''}</td>
+      <td><div class="cam-name">${esc(c.content)}</div><div class="cam-sub">${esc(c.campaign)}</div></td>
       <td>${srcPill(c.source)}</td>
       <td class="num">${c.leads}</td>
       <td><div class="ads-bar"><div class="ads-bar-fill" style="width:${barW}%"></div></div></td>
