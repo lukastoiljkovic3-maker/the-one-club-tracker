@@ -2697,13 +2697,16 @@ async function loadCampaignData(){
     .not('utm_campaign','is',null)
     .limit(5000);
   if(error||!data) return [];
+  const isId=v=>v&&/^\d{10,}$/.test(v.trim());
+  const fmtCampaign=v=>!v||isId(v)?'Nepoznata kampanja':v.replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
+  const fmtContent=v=>!v||isId(v)?'':v;
   const map={};
   data.forEach(r=>{
-    const key=r.utm_campaign;
+    const key=(r.utm_campaign||'').toLowerCase()||'unknown';
     if(!map[key]) map[key]={
-      campaign:r.utm_campaign,
-      content:r.utm_content||'',
-      source:(r.utm_source||'').toLowerCase(),
+      campaign:fmtCampaign(r.utm_campaign),
+      content:fmtContent(r.utm_content),
+      source:(r.utm_source||'').toLowerCase().replace(/^ig$/,'instagram'),
       medium:r.utm_medium||'',
       leads:0, closes:0
     };
