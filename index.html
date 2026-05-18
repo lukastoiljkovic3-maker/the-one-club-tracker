@@ -3024,11 +3024,11 @@ function openLeadDetail(id){
     </div>
     <div>
       <div class="ldp-sec-lbl">Follow Up</div>
-      <button class="ldp-fu-btn">
+      <button type="button" class="ldp-fu-btn" onclick="(this.querySelector('.ldp-fu-native')||{}).showPicker?this.querySelector('.ldp-fu-native').showPicker():0">
         <span class="ldp-fu-icon">📅</span>
         <span class="ldp-fu-text ${c.follow_up_date?(fuCls||'has-date'):''}">${c.follow_up_date?new Date(c.follow_up_date+'T00:00').toLocaleDateString('sr-RS',{day:'numeric',month:'long',year:'numeric'}):'Postavi datum'}</span>
         <svg class="ldp-fu-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        <input type="date" class="ldp-fu-native" value="${c.follow_up_date||''}" onchange="updateLeadFollowUpPanel('${esc(c.id)}',this.value,this)" />
+        <input type="date" class="ldp-fu-native" value="${c.follow_up_date||''}" onclick="event.stopPropagation();try{this.showPicker()}catch(e){}" onchange="updateLeadFollowUpPanel('${esc(c.id)}',this.value,this)" />
       </button>
     </div>
     ${fields.length?`<div>
