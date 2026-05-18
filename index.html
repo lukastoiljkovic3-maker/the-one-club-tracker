@@ -36,7 +36,6 @@
   --green:    #22c55e;
   --red:      #f43f5e;
   --yellow:   #eab308;
-  --nikola:   #3b82f6;
   --mateja:   #a855f7;
   --dusica:   #f97316;
   --r:        14px;
@@ -106,12 +105,10 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   color: var(--text);
   box-shadow: 0 1px 8px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.07);
 }
-.tab.active[data-member="nikola"] { color: var(--nikola); }
 .tab.active[data-member="mateja"] { color: var(--mateja); }
 .tab.active[data-member="dusica"] { color: var(--dusica); }
 [data-member="dusica"] .tab-pip { background: var(--dusica); }
 .tab-pip { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-[data-member="nikola"] .tab-pip { background: var(--nikola); }
 [data-member="mateja"] .tab-pip { background: var(--mateja); }
 
 .btn-add {
@@ -194,7 +191,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   position: relative; overflow: hidden;
 }
 .mc-av img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; display: block; }
-.mc-av.nikola { box-shadow: 0 0 0 2px rgba(59,130,246,.45), 0 0 20px rgba(59,130,246,.2); }
 .mc-av.mateja { box-shadow: 0 0 0 2px rgba(168,85,247,.45), 0 0 20px rgba(168,85,247,.2); }
 .mc-av.dusica { box-shadow: 0 0 0 2px rgba(249,115,22,.45), 0 0 20px rgba(249,115,22,.2); }
 .mc-name { font-size: 18px; font-weight: 900; line-height: 1.1; letter-spacing: -.3px; }
@@ -321,8 +317,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   position:absolute; bottom:0; left:0; right:0; height:2px;
 }
 
-.ltn-active-q  { border-color:rgba(59,130,246,.35); background:rgba(59,130,246,.07); color:var(--nikola); }
-.ltn-active-q  .ltn-count { color:var(--nikola); }
+.ltn-active-q  { border-color:rgba(59,130,246,.35); background:rgba(59,130,246,.07); color:#3b82f6; }
+.ltn-active-q  .ltn-count { color:#3b82f6; }
 .ltn-active-q  .ltn-sublabel { color:rgba(59,130,246,.6); }
 .ltn-active-dq { border-color:rgba(244,63,94,.35);  background:rgba(244,63,94,.07);  color:var(--red); }
 .ltn-active-dq .ltn-count { color:var(--red); }
@@ -458,7 +454,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   transform:translateY(-3px);
   box-shadow:0 20px 60px rgba(0,0,0,.5);
 }
-.lead-card.assigned-nikola { --lc:var(--nikola); }
 .lead-card.assigned-mateja { --lc:var(--mateja); }
 .lead-card.assigned-dusica { --lc:var(--dusica); }
 .lead-card.status-Closed   { --lc:var(--green); }
@@ -472,7 +467,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   font-size:14px; font-weight:900; letter-spacing:-.5px; color:var(--text);
   background:var(--s3); border:1px solid var(--b2);
 }
-.lc-av.av-n { background:rgba(59,130,246,.12);  color:var(--nikola); border-color:rgba(59,130,246,.25); }
 .lc-av.av-m { background:rgba(168,85,247,.12); color:var(--mateja); border-color:rgba(168,85,247,.25); }
 .lc-av.av-d { background:rgba(249,115,22,.12); color:var(--dusica); border-color:rgba(249,115,22,.25); }
 .lc-info { flex:1; min-width:0; }
@@ -519,7 +513,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   letter-spacing:.2px;
 }
 .lc-ab:hover { border-color:var(--b2); color:var(--text); }
-.lc-ab.on-n  { background:rgba(59,130,246,.12);  color:var(--nikola); border-color:rgba(59,130,246,.3); }
 .lc-ab.on-m  { background:rgba(168,85,247,.12); color:var(--mateja); border-color:rgba(168,85,247,.3); }
 .lc-ab.on-d  { background:rgba(249,115,22,.12); color:var(--dusica); border-color:rgba(249,115,22,.3); }
 .lc-ab img   { width:18px; height:18px; border-radius:50%; object-fit:cover; }
@@ -617,14 +610,16 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .lsb-btn.tab-all    { border-bottom-color: transparent; }
 .lsb-btn.tab-all.active    { background: var(--s2); }
 .lsb-btn.tab-all.active    .lsb-count { color: #fff; }
-.lsb-btn.tab-q.active      { border-bottom-color: var(--nikola); background: rgba(59,130,246,.04); }
-.lsb-btn.tab-q.active      .lsb-count { color: var(--nikola); }
+.lsb-btn.tab-q.active      { border-bottom-color: #3b82f6; background: rgba(59,130,246,.04); }
+.lsb-btn.tab-q.active      .lsb-count { color: #3b82f6; }
 .lsb-btn.tab-dq.active     { border-bottom-color: var(--red); background: rgba(244,63,94,.04); }
 .lsb-btn.tab-dq.active     .lsb-count { color: var(--red); }
 .lsb-btn.tab-dq.active     { border-bottom-color: var(--red); background: rgba(244,63,94,.04); }
 .lsb-btn.tab-dq.active     .lsb-count { color: var(--red); }
 .lsb-btn.tab-wb.active     { border-bottom-color: #a855f7; background: rgba(168,85,247,.04); }
 .lsb-btn.tab-wb.active     .lsb-count { color: #a855f7; }
+.lsb-btn.tab-wa.active     { border-bottom-color: #10b981; background: rgba(16,185,129,.04); }
+.lsb-btn.tab-wa.active     .lsb-count { color: #10b981; }
 .lsb-btn.tab-lm.active     { border-bottom-color: var(--yellow); background: rgba(234,179,8,.04); }
 .lsb-btn.tab-lm.active     .lsb-count { color: var(--yellow); }
 
@@ -670,15 +665,15 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   display: flex; align-items: center; justify-content: center;
   font-size: 11px; font-weight: 800; background: var(--s3); border: 1px solid var(--b2); color: var(--text);
 }
-.ltr-av.av-n { background: rgba(59,130,246,.12); color: var(--nikola); border-color: rgba(59,130,246,.25); }
 .ltr-av.av-m { background: rgba(168,85,247,.12); color: var(--mateja); border-color: rgba(168,85,247,.25); }
 .ltr-av.av-d { background: rgba(249,115,22,.12); color: var(--dusica); border-color: rgba(249,115,22,.25); }
 .ltr-name { font-size: 13px; font-weight: 700; line-height: 1.2; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 .ltr-sub  { font-size: 10px; color: var(--muted); margin-top: 1px; white-space: nowrap; max-width: 180px; overflow: hidden; text-overflow: ellipsis; }
 .ltr-type { display: inline-flex; padding: 2px 8px; border-radius: 99px; font-size: 9px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; white-space: nowrap; }
-.type-q  { background: rgba(59,130,246,.10);  color: var(--nikola); }
+.type-q  { background: rgba(59,130,246,.10);  color: #3b82f6; }
 .type-dq { background: rgba(244,63,94,.10);   color: var(--red); }
 .type-wb { background: rgba(168,85,247,.10);  color: #a855f7; }
+.type-wa { background: rgba(16,185,129,.10);  color: #10b981; }
 .type-lm { background: rgba(234,179,8,.10);   color: var(--yellow); }
 .ltr-status-sel {
   padding: 5px 8px; border-radius: 8px; border: 1px solid var(--b);
@@ -696,7 +691,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   color: var(--muted); font-family: var(--font);
 }
 .ltr-ab:hover { border-color: var(--b2); color: var(--text); }
-.ltr-ab.on-n { background: rgba(59,130,246,.15); color: var(--nikola); border-color: rgba(59,130,246,.3); }
 .ltr-ab.on-m { background: rgba(168,85,247,.15); color: var(--mateja); border-color: rgba(168,85,247,.3); }
 .ltr-ab.on-d { background: rgba(249,115,22,.15); color: var(--dusica); border-color: rgba(249,115,22,.3); }
 .ltr-fu {
@@ -735,7 +729,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   display: flex; align-items: center; justify-content: center;
   font-size: 14px; font-weight: 900; background: var(--s3); border: 1px solid var(--b2);
 }
-.ldp-av.av-n { background: rgba(59,130,246,.12); color: var(--nikola); border-color: rgba(59,130,246,.25); }
 .ldp-av.av-m { background: rgba(168,85,247,.12); color: var(--mateja); border-color: rgba(168,85,247,.25); }
 .ldp-av.av-d { background: rgba(249,115,22,.12); color: var(--dusica); border-color: rgba(249,115,22,.25); }
 .ldp-name { font-size: 16px; font-weight: 800; letter-spacing: -.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -786,7 +779,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   touch-action:manipulation; text-align:center; letter-spacing:.2px;
 }
 .ldp-st-btn:hover { border-color:var(--b2); color:var(--text); }
-.ldp-st-novi   { background:rgba(59,130,246,.12); color:var(--nikola); border-color:rgba(59,130,246,.3); }
+.ldp-st-novi   { background:rgba(59,130,246,.12); color:#3b82f6; border-color:rgba(59,130,246,.3); }
 .ldp-st-fu     { background:rgba(234,179,8,.12); color:var(--yellow); border-color:rgba(234,179,8,.3); }
 .ldp-st-closed { background:rgba(34,197,94,.12); color:var(--green); border-color:rgba(34,197,94,.3); }
 .ldp-st-dq     { background:rgba(244,63,94,.12); color:var(--red); border-color:rgba(244,63,94,.3); }
@@ -800,7 +793,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   touch-action:manipulation;
 }
 .ldp-assign-btn:hover { border-color:var(--b2); color:var(--text); }
-.ldp-ab-n { background:rgba(59,130,246,.12); color:var(--nikola); border-color:rgba(59,130,246,.3); }
 .ldp-ab-m { background:rgba(168,85,247,.12); color:var(--mateja); border-color:rgba(168,85,247,.3); }
 .ldp-ab-d { background:rgba(249,115,22,.12); color:var(--dusica); border-color:rgba(249,115,22,.3); }
 
@@ -937,7 +929,6 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .wolf-crown { font-size:20px; margin-bottom:2px; line-height:1; }
 .wolf-sc-av { width:44px; height:44px; border-radius:50%; overflow:hidden; margin:0 auto 8px; }
 .wolf-sc-av img { width:100%; height:100%; object-fit:cover; }
-.wolf-sc-av.nikola { box-shadow:0 0 0 2px rgba(59,130,246,.5); }
 .wolf-sc-av.mateja { box-shadow:0 0 0 2px rgba(168,85,247,.5); }
 .wolf-sc-av.dusica { box-shadow:0 0 0 2px rgba(249,115,22,.5); }
 .wolf-bar-d { background:var(--dusica); height:100%; }
@@ -974,9 +965,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .wolf-month-stat:last-child { justify-content:flex-end; text-align:right; }
 .wolf-month-sub { font-size:9px; color:var(--muted); font-weight:500; }
 .wolf-month-bar-wrap { flex:1; height:5px; border-radius:99px; overflow:hidden; display:flex; background:var(--s3); }
-.wolf-bar-n { background:var(--nikola); height:100%; }
 .wolf-bar-m { background:var(--mateja); height:100%; }
-.wolf-win-n { color:var(--nikola); }
 .wolf-win-m { color:var(--mateja); }
 .wolf-empty { text-align:center; padding:32px 20px; color:var(--muted); font-size:13px; font-weight:600; }
 
@@ -1432,9 +1421,6 @@ button, .tab, .btn, .btn-add, .cal-cell, .log-table tbody tr { touch-action: man
       <button class="tab active" data-member="team" onclick="setTab('team')">
         <span class="tab-pip" style="background:var(--accent)"></span> Tim
       </button>
-      <button class="tab" data-member="nikola" onclick="setTab('nikola')">
-        <span class="tab-pip"></span> Nikola
-      </button>
       <button class="tab" data-member="mateja" onclick="setTab('mateja')">
         <span class="tab-pip"></span> Mateja
       </button>
@@ -1483,7 +1469,6 @@ button, .tab, .btn, .btn-add, .cal-cell, .log-table tbody tr { touch-action: man
         <div class="f">
           <label>Član tima</label>
           <select id="fMember">
-            <option value="nikola">Nikola</option>
             <option value="mateja">Mateja</option>
             <option value="dusica">Dusica</option>
           </select>
@@ -1537,13 +1522,6 @@ button, .tab, .btn, .btn-add, .cal-cell, .log-table tbody tr { touch-action: man
       <path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
     </svg>
     <span>Tim</span>
-  </button>
-  <button class="bnav-btn" data-tab="nikola" onclick="setTab('nikola')" style="color:var(--nikola)">
-    <div class="bnav-pip"></div>
-    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
-    </svg>
-    <span>Nikola</span>
   </button>
   <button class="bnav-btn" data-tab="mateja" onclick="setTab('mateja')" style="color:var(--mateja)">
     <div class="bnav-pip"></div>
@@ -1607,7 +1585,7 @@ let leadsView    = 'list'; // 'list' | 'ads'
 let currentLeadId = null;
 let leadsSearch  = '';
 let cachedLeads  = [];
-let leadCounts   = { qualified: 0, disqualified: 0, webinar_lead: 0, lead_magnet: 0 };
+let leadCounts   = { qualified: 0, disqualified: 0, webinar_lead: 0, webinar_attended: 0, lead_magnet: 0 };
 let openNotes    = new Set();
 
 // Monthly targets (persisted in localStorage)
@@ -1815,10 +1793,9 @@ async function render() {
 function renderKPIs(data) {
   let s;
   if (currentTab === 'team') {
-    const sN = sum(gm(data,'nikola',currentYear,currentMonth));
     const sM = sum(gm(data,'mateja',currentYear,currentMonth));
     const sD = sum(gm(data,'dusica',currentYear,currentMonth));
-    s = { calls:sN.calls+sM.calls+sD.calls, pickups:sN.pickups+sM.pickups+sD.pickups, dq:sN.dq+sM.dq+sD.dq, followup:sN.followup+sM.followup+sD.followup, close:sN.close+sM.close+sD.close };
+    s = { calls:sM.calls+sD.calls, pickups:sM.pickups+sD.pickups, dq:sM.dq+sD.dq, followup:sM.followup+sD.followup, close:sM.close+sD.close };
   } else {
     s = sum(gm(data,currentTab,currentYear,currentMonth));
   }
@@ -1870,7 +1847,7 @@ function renderMain(data) {
 
 function renderMember(data, member) {
   const dm = gm(data,member,currentYear,currentMonth);
-  const color = member==='nikola'?'var(--nikola)':member==='mateja'?'var(--mateja)':'var(--dusica)';
+  const color = member==='mateja'?'var(--mateja)':'var(--dusica)';
   return `
     <div data-role="main">
       ${renderCal(dm,member)}
@@ -1891,22 +1868,20 @@ function renderMember(data, member) {
 }
 
 function renderTeam(data) {
-  const sN = sum(gm(data,'nikola',currentYear,currentMonth));
   const sM = sum(gm(data,'mateja',currentYear,currentMonth));
   const sD = sum(gm(data,'dusica',currentYear,currentMonth));
   return `
     <div data-role="side" class="side-panel">
-      ${renderMemberCard('nikola',sN)}
       ${renderMemberCard('mateja',sM)}
       ${renderMemberCard('dusica',sD)}
       <div class="card">
         <div class="card-head"><div class="card-title">Ko je Jači?</div></div>
         <div class="card-body">
           <div class="h2h-wrap">
-            ${h2h('Pozivi',sN.calls,sM.calls,sD.calls)}
-            ${h2h('Javljanja',sN.pickups,sM.pickups,sD.pickups)}
-            ${h2h('Zatvoreni',sN.close,sM.close,sD.close)}
-            ${h2h('Follow Up',sN.followup,sM.followup,sD.followup)}
+            ${h2h('Pozivi',sM.calls,sD.calls)}
+            ${h2h('Javljanja',sM.pickups,sD.pickups)}
+            ${h2h('Zatvoreni',sM.close,sD.close)}
+            ${h2h('Follow Up',sM.followup,sD.followup)}
           </div>
         </div>
       </div>
@@ -1941,7 +1916,7 @@ function renderTeam(data) {
 function renderMemberCard(member, s) {
   const pr = pct(s.pickups,s.calls);
   const cr = pct(s.close,s.pickups);
-  const color = member==='nikola'?'var(--nikola)':member==='mateja'?'var(--mateja)':'var(--dusica)';
+  const color = member==='mateja'?'var(--mateja)':'var(--dusica)';
   return `
     <div class="mc">
       <div class="mc-head">
@@ -2075,10 +2050,9 @@ function renderLog(dm, member) {
 
 function renderYearTable(data) {
   const months = MONTHS3.map((lbl,i)=>{
-    const sN=sum(gm(data,'nikola',currentYear,i));
     const sM=sum(gm(data,'mateja',currentYear,i));
     const sD=sum(gm(data,'dusica',currentYear,i));
-    return {lbl,calls:sN.calls+sM.calls+sD.calls,pickups:sN.pickups+sM.pickups+sD.pickups,dq:sN.dq+sM.dq+sD.dq,followup:sN.followup+sM.followup+sD.followup,close:sN.close+sM.close+sD.close,idx:i};
+    return {lbl,calls:sM.calls+sD.calls,pickups:sM.pickups+sD.pickups,dq:sM.dq+sD.dq,followup:sM.followup+sD.followup,close:sM.close+sD.close,idx:i};
   });
   const tot = months.reduce((a,m)=>({calls:a.calls+m.calls,pickups:a.pickups+m.pickups,dq:a.dq+m.dq,followup:a.followup+m.followup,close:a.close+m.close}),{calls:0,pickups:0,dq:0,followup:0,close:0});
   const hdr=months.map(m=>`<th class="${m.idx===currentMonth?'yr-cur':''}">${m.lbl}</th>`).join('');
@@ -2088,21 +2062,18 @@ function renderYearTable(data) {
   </tbody></table>`;
 }
 
-function h2h(label,vN,vM,vD) {
+function h2h(label,vM,vD) {
   vD = vD||0;
-  const tot=vN+vM+vD;
-  const pN=tot?Math.round(vN/tot*100):34;
-  const pM=tot?Math.round(vM/tot*100):33;
-  const pD=Math.max(0,100-pN-pM);
+  const tot=vM+vD;
+  const pM=tot?Math.round(vM/tot*100):50;
+  const pD=Math.max(0,100-pM);
   return `<div class="h2h-row">
     <div class="h2h-lbl" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:space-between;align-items:center">
-      <span style="color:var(--nikola)">Nikola ${vN}</span>
       <span style="color:var(--mateja)">Mateja ${vM}</span>
       <span class="h2h-metric">${label}</span>
       <span style="color:var(--dusica)">Dusica ${vD}</span>
     </div>
     <div class="h2h-track">
-      <div class="h2h-fill" style="width:${pN}%;background:var(--nikola)"></div>
       <div class="h2h-fill" style="width:${pM}%;background:var(--mateja)"></div>
       <div class="h2h-fill" style="width:${pD}%;background:var(--dusica)"></div>
     </div>
@@ -2118,21 +2089,20 @@ function setMetricsPeriod(p){ metricsPeriod=p; renderMetricsTab(); }
 /* ── TREND CHART DATA ── */
 function buildChartData(data, period) {
   const now = new Date();
-  const labels=[], callsN=[], callsM=[], callsD=[], closeN=[], closeM=[], closeD=[];
+  const labels=[], callsM=[], callsD=[], closeM=[], closeD=[];
 
   const dayPoint=(dt)=>{
-    const dN=data['nikola']?.[dt.getFullYear()]?.[dt.getMonth()]?.[dt.getDate()]||{};
     const dM=data['mateja']?.[dt.getFullYear()]?.[dt.getMonth()]?.[dt.getDate()]||{};
     const dD=data['dusica']?.[dt.getFullYear()]?.[dt.getMonth()]?.[dt.getDate()]||{};
-    callsN.push(dN.calls||0); callsM.push(dM.calls||0); callsD.push(dD.calls||0);
-    closeN.push(dN.close||0); closeM.push(dM.close||0); closeD.push(dD.close||0);
+    callsM.push(dM.calls||0); callsD.push(dD.calls||0);
+    closeM.push(dM.close||0); closeD.push(dD.close||0);
   };
 
   if(period==='today'||period==='yesterday'){
     const dt=period==='today'?now:new Date(now.getTime()-86400000);
     labels.push(dt.toLocaleDateString('sr-RS',{day:'2-digit',month:'short'}));
     dayPoint(dt);
-    return{labels,callsN,callsM,callsD,closeN,closeM,closeD};
+    return{labels,callsM,callsD,closeM,closeD};
   }
   if(period==='week'||period==='lastweek'){
     const dow=now.getDay(); const diff=dow===0?6:dow-1;
@@ -2142,7 +2112,7 @@ function buildChartData(data, period) {
       const dt=new Date(start); dt.setDate(dt.getDate()+i);
       labels.push(DAYS[i]); dayPoint(dt);
     }
-    return{labels,callsN,callsM,callsD,closeN,closeM,closeD};
+    return{labels,callsM,callsD,closeM,closeD};
   }
   if(period==='month'||period==='last'){
     let y=currentYear, m=currentMonth;
@@ -2150,24 +2120,22 @@ function buildChartData(data, period) {
     const days=new Date(y,m+1,0).getDate();
     for(let d=1;d<=days;d++){
       labels.push(String(d));
-      const dN=data['nikola']?.[y]?.[m]?.[d]||{};
       const dM=data['mateja']?.[y]?.[m]?.[d]||{};
       const dD=data['dusica']?.[y]?.[m]?.[d]||{};
-      callsN.push(dN.calls||0); callsM.push(dM.calls||0); callsD.push(dD.calls||0);
-      closeN.push(dN.close||0); closeM.push(dM.close||0); closeD.push(dD.close||0);
+      callsM.push(dM.calls||0); callsD.push(dD.calls||0);
+      closeM.push(dM.close||0); closeD.push(dD.close||0);
     }
-    return{labels,callsN,callsM,callsD,closeN,closeM,closeD};
+    return{labels,callsM,callsD,closeM,closeD};
   }
   // 'all' — by month
   const md={};
-  ['nikola','mateja','dusica'].forEach(mb=>{
+  ['mateja','dusica'].forEach(mb=>{
     Object.entries(data[mb]||{}).forEach(([y,yd])=>{
       Object.entries(yd||{}).forEach(([mo,mdd])=>{
         const key=`${y}-${String(mo).padStart(2,'0')}`;
-        if(!md[key])md[key]={y:+y,m:+mo,N:{calls:0,close:0},M:{calls:0,close:0},D:{calls:0,close:0}};
+        if(!md[key])md[key]={y:+y,m:+mo,M:{calls:0,close:0},D:{calls:0,close:0}};
         Object.values(mdd||{}).forEach(dd=>{
-          if(mb==='nikola'){md[key].N.calls+=dd.calls||0;md[key].N.close+=dd.close||0;}
-          else if(mb==='mateja'){md[key].M.calls+=dd.calls||0;md[key].M.close+=dd.close||0;}
+          if(mb==='mateja'){md[key].M.calls+=dd.calls||0;md[key].M.close+=dd.close||0;}
           else{md[key].D.calls+=dd.calls||0;md[key].D.close+=dd.close||0;}
         });
       });
@@ -2175,18 +2143,18 @@ function buildChartData(data, period) {
   });
   Object.entries(md).sort(([a],[b])=>a.localeCompare(b)).forEach(([,v])=>{
     labels.push(MONTHS3[v.m]);
-    callsN.push(v.N.calls); callsM.push(v.M.calls); callsD.push(v.D.calls);
-    closeN.push(v.N.close); closeM.push(v.M.close); closeD.push(v.D.close);
+    callsM.push(v.M.calls); callsD.push(v.D.calls);
+    closeM.push(v.M.close); closeD.push(v.D.close);
   });
-  return{labels,callsN,callsM,callsD,closeN,closeM,closeD};
+  return{labels,callsM,callsD,closeM,closeD};
 }
 
 function initTrendChart(chartData){
   const canvas=document.getElementById('trend-chart');
   if(!canvas)return;
   if(_trendChart){_trendChart.destroy();_trendChart=null;}
-  const {labels,callsN,callsM,callsD,closeN,closeM,closeD}=chartData;
-  const hasClose=closeN.some(v=>v>0)||closeM.some(v=>v>0)||(closeD||[]).some(v=>v>0);
+  const {labels,callsM,callsD,closeM,closeD}=chartData;
+  const hasClose=closeM.some(v=>v>0)||(closeD||[]).some(v=>v>0);
   const gridColor='rgba(255,255,255,0.05)';
   const tickColor='#60606c';
   _trendChart=new Chart(canvas.getContext('2d'),{
@@ -2194,11 +2162,9 @@ function initTrendChart(chartData){
     data:{
       labels,
       datasets:[
-        {label:'Nikola — Pozivi',data:callsN,backgroundColor:'rgba(59,130,246,0.25)',borderColor:'rgba(59,130,246,0.7)',borderWidth:1,borderRadius:4,stack:'calls'},
         {label:'Mateja — Pozivi',data:callsM,backgroundColor:'rgba(168,85,247,0.25)',borderColor:'rgba(168,85,247,0.7)',borderWidth:1,borderRadius:4,stack:'calls'},
         {label:'Dusica — Pozivi',data:callsD||[],backgroundColor:'rgba(249,115,22,0.25)',borderColor:'rgba(249,115,22,0.7)',borderWidth:1,borderRadius:4,stack:'calls'},
         ...(hasClose?[
-          {label:'Nikola — Zatvoreni',data:closeN,backgroundColor:'rgba(34,197,94,0.5)',borderColor:'rgba(34,197,94,0.9)',borderWidth:1,borderRadius:4,type:'line',yAxisID:'y2',tension:.35,pointRadius:3,pointBackgroundColor:'rgba(34,197,94,0.9)'},
           {label:'Mateja — Zatvoreni',data:closeM,backgroundColor:'rgba(59,130,246,0.5)',borderColor:'rgba(96,165,250,0.9)',borderWidth:1,borderRadius:4,type:'line',yAxisID:'y2',tension:.35,pointRadius:3,pointBackgroundColor:'rgba(96,165,250,0.9)'},
           {label:'Dusica — Zatvoreni',data:closeD||[],backgroundColor:'rgba(249,115,22,0.5)',borderColor:'rgba(249,115,22,0.9)',borderWidth:1,borderRadius:4,type:'line',yAxisID:'y2',tension:.35,pointRadius:3,pointBackgroundColor:'rgba(249,115,22,0.9)'},
         ]:[])
@@ -2252,18 +2218,18 @@ function getStatsForPeriod(data, period) {
   const tod = {y:now.getFullYear(), m:now.getMonth(), d:now.getDate()};
 
   if(period==='today'){
-    return { sN:sumRange(data,'nikola',tod,tod), sM:sumRange(data,'mateja',tod,tod), sD:sumRange(data,'dusica',tod,tod) };
+    return { sM:sumRange(data,'mateja',tod,tod), sD:sumRange(data,'dusica',tod,tod) };
   }
   if(period==='yesterday'){
     const yy = new Date(now); yy.setDate(yy.getDate()-1);
     const yd = {y:yy.getFullYear(), m:yy.getMonth(), d:yy.getDate()};
-    return { sN:sumRange(data,'nikola',yd,yd), sM:sumRange(data,'mateja',yd,yd), sD:sumRange(data,'dusica',yd,yd) };
+    return { sM:sumRange(data,'mateja',yd,yd), sD:sumRange(data,'dusica',yd,yd) };
   }
   if(period==='week'){
     const dow = now.getDay(); const diff = dow===0?6:dow-1;
     const mon = new Date(now); mon.setDate(mon.getDate()-diff);
     const start = {y:mon.getFullYear(), m:mon.getMonth(), d:mon.getDate()};
-    return { sN:sumRange(data,'nikola',start,tod), sM:sumRange(data,'mateja',start,tod), sD:sumRange(data,'dusica',start,tod) };
+    return { sM:sumRange(data,'mateja',start,tod), sD:sumRange(data,'dusica',start,tod) };
   }
   if(period==='lastweek'){
     const dow = now.getDay(); const diff = dow===0?6:dow-1;
@@ -2272,26 +2238,26 @@ function getStatsForPeriod(data, period) {
     const lastMon = new Date(thisMon); lastMon.setDate(lastMon.getDate()-7);
     const s = {y:lastMon.getFullYear(), m:lastMon.getMonth(), d:lastMon.getDate()};
     const e = {y:lastSun.getFullYear(), m:lastSun.getMonth(), d:lastSun.getDate()};
-    return { sN:sumRange(data,'nikola',s,e), sM:sumRange(data,'mateja',s,e), sD:sumRange(data,'dusica',s,e) };
+    return { sM:sumRange(data,'mateja',s,e), sD:sumRange(data,'dusica',s,e) };
   }
   if(period==='month'){
-    return { sN:sum(gm(data,'nikola',currentYear,currentMonth)), sM:sum(gm(data,'mateja',currentYear,currentMonth)), sD:sum(gm(data,'dusica',currentYear,currentMonth)) };
+    return { sM:sum(gm(data,'mateja',currentYear,currentMonth)), sD:sum(gm(data,'dusica',currentYear,currentMonth)) };
   }
   if(period==='last'){
     let lm=currentMonth-1, ly=currentYear; if(lm<0){lm=11;ly--;}
-    return { sN:sum(gm(data,'nikola',ly,lm)), sM:sum(gm(data,'mateja',ly,lm)), sD:sum(gm(data,'dusica',ly,lm)) };
+    return { sM:sum(gm(data,'mateja',ly,lm)), sD:sum(gm(data,'dusica',ly,lm)) };
   }
   // 'all'
-  const aggN={}, aggM={}, aggD={};
-  ['nikola','mateja','dusica'].forEach(mb=>{
-    const dest = mb==='nikola'?aggN:mb==='mateja'?aggM:aggD;
+  const aggM={}, aggD={};
+  ['mateja','dusica'].forEach(mb=>{
+    const dest = mb==='mateja'?aggM:aggD;
     Object.entries(data[mb]||{}).forEach(([y,yd])=>{
       Object.entries(yd||{}).forEach(([mo,md])=>{
         Object.entries(md||{}).forEach(([d,dd])=>{ dest[`${y}-${mo}-${d}`]=dd; });
       });
     });
   });
-  return { sN:sum(aggN), sM:sum(aggM), sD:sum(aggD) };
+  return { sM:sum(aggM), sD:sum(aggD) };
 }
 
 const PERIOD_LABELS = {
@@ -2311,55 +2277,48 @@ async function renderWolfTab(){
     return s.close*10 + s.calls*0.1 + cr*1.5 + pr*0.3;
   }
 
-  const sN=sum(gm(data,'nikola',currentYear,currentMonth));
   const sM=sum(gm(data,'mateja',currentYear,currentMonth));
   const sD=sum(gm(data,'dusica',currentYear,currentMonth));
-  const scN=wolfScore(sN), scM=wolfScore(sM), scD=wolfScore(sD);
-  const maxSc=Math.max(scN,scM,scD);
+  const scM=wolfScore(sM), scD=wolfScore(sD);
+  const maxSc=Math.max(scM,scD);
   const leader = maxSc===0 ? 'tie'
-    : (scN===maxSc && scM!==maxSc && scD!==maxSc) ? 'nikola'
-    : (scM===maxSc && scN!==maxSc && scD!==maxSc) ? 'mateja'
-    : (scD===maxSc && scN!==maxSc && scM!==maxSc) ? 'dusica'
+    : (scM===maxSc && scD!==maxSc) ? 'mateja'
+    : (scD===maxSc && scM!==maxSc) ? 'dusica'
     : 'tie';
-  const leaderScore = leader==='nikola'?scN:leader==='mateja'?scM:leader==='dusica'?scD:0;
-  const leaderColor = leader==='nikola'?'var(--nikola)':leader==='mateja'?'var(--mateja)':leader==='dusica'?'var(--dusica)':'var(--text)';
-  const leaderName = leader==='nikola'?'Nikola':leader==='mateja'?'Mateja':leader==='dusica'?'Dusica':'Remi';
+  const leaderScore = leader==='mateja'?scM:leader==='dusica'?scD:0;
+  const leaderColor = leader==='mateja'?'var(--mateja)':leader==='dusica'?'var(--dusica)':'var(--text)';
+  const leaderName = leader==='mateja'?'Mateja':leader==='dusica'?'Dusica':'Remi';
 
   // Build months with data
   const months=[];
   for(let m=0;m<=11;m++){
-    const mn=sum(gm(data,'nikola',currentYear,m));
     const mm=sum(gm(data,'mateja',currentYear,m));
     const md=sum(gm(data,'dusica',currentYear,m));
-    if(mn.calls===0&&mm.calls===0&&md.calls===0)continue;
-    const sn=wolfScore(mn),sm=wolfScore(mm),sd=wolfScore(md);
-    const mx=Math.max(sn,sm,sd);
+    if(mm.calls===0&&md.calls===0)continue;
+    const sm=wolfScore(mm),sd=wolfScore(md);
+    const mx=Math.max(sm,sd);
     const winner = mx===0 ? 'tie'
-      : (sn===mx && sm!==mx && sd!==mx) ? 'n'
-      : (sm===mx && sn!==mx && sd!==mx) ? 'm'
-      : (sd===mx && sn!==mx && sm!==mx) ? 'd'
+      : (sm===mx && sd!==mx) ? 'm'
+      : (sd===mx && sm!==mx) ? 'd'
       : 'tie';
-    months.push({month:m,n:mn,m:mm,d:md,sn,sm,sd,winner});
+    months.push({month:m,m:mm,d:md,sm,sd,winner});
   }
 
-  const winsN=months.filter(x=>x.winner==='n').length;
   const winsM=months.filter(x=>x.winner==='m').length;
   const winsD=months.filter(x=>x.winner==='d').length;
 
   // Win streak
-  let streakN=0,streakM=0,streakD=0;
+  let streakM=0,streakD=0;
   for(let i=months.length-1;i>=0;i--){
     const w=months[i].winner;
-    if(w==='n'){if(streakM===0&&streakD===0)streakN++;else break;}
-    else if(w==='m'){if(streakN===0&&streakD===0)streakM++;else break;}
-    else if(w==='d'){if(streakN===0&&streakM===0)streakD++;else break;}
+    if(w==='m'){if(streakD===0)streakM++;else break;}
+    else if(w==='d'){if(streakM===0)streakD++;else break;}
     else break;
   }
-  const streaker = streakN>1?`🔥 Nikola ${streakN} meseca zaredom`
-    : streakM>1?`🔥 Mateja ${streakM} meseca zaredom`
+  const streaker = streakM>1?`🔥 Mateja ${streakM} meseca zaredom`
     : streakD>1?`🔥 Dusica ${streakD} meseca zaredom`
     : '';
-  const maxWins=Math.max(winsN,winsM,winsD);
+  const maxWins=Math.max(winsM,winsD);
 
   const M3=['Jan','Feb','Mar','Apr','Maj','Jun','Jul','Avg','Sep','Okt','Nov','Dec'];
 
@@ -2376,18 +2335,6 @@ async function renderWolfTab(){
       </div>
 
       <div class="wolf-score-row">
-        <div class="wolf-score-card ${leader==='nikola'?'wolf-leader':''}">
-          ${leader==='nikola'?'<div class="wolf-crown">👑</div>':''}
-          <div class="wolf-sc-av nikola"><img src="nikola.png" alt="N"/></div>
-          <div class="wolf-sc-name">Nikola</div>
-          <div class="wolf-sc-pts" style="color:var(--nikola)">${Math.round(scN)}</div>
-          <div class="wolf-sc-label">bodova</div>
-          <div class="wolf-sc-stats">
-            <span>${sN.close} zat.</span>
-            <span>${pct(sN.close,sN.pickups)}% CR</span>
-            <span>${sN.calls} poz.</span>
-          </div>
-        </div>
         <div class="wolf-score-card ${leader==='mateja'?'wolf-leader':''}">
           ${leader==='mateja'?'<div class="wolf-crown">👑</div>':''}
           <div class="wolf-sc-av mateja"><img src="mateja.png" alt="M"/></div>
@@ -2419,11 +2366,6 @@ async function renderWolfTab(){
     <div class="wolf-section">
       <div class="wolf-sec-lbl">Sezona ${currentYear}</div>
       <div class="wolf-record-row">
-        <div class="wolf-record ${winsN===maxWins&&winsN>0?'leading':''}" style="--c:var(--nikola)">
-          <div class="wolf-rec-val">${winsN}</div>
-          <div class="wolf-rec-lbl">Nikola</div>
-        </div>
-        <div class="wolf-record-vs">:</div>
         <div class="wolf-record ${winsM===maxWins&&winsM>0?'leading':''}" style="--c:var(--mateja)">
           <div class="wolf-rec-val">${winsM}</div>
           <div class="wolf-rec-lbl">Mateja</div>
@@ -2443,28 +2385,21 @@ async function renderWolfTab(){
       ${months.length===0?`<div class="wolf-empty">Nema podataka za ${currentYear}</div>`:`
       <div class="wolf-month-list">
         ${[...months].reverse().map(m=>{
-          const totSc=m.sn+m.sm+m.sd;
-          const wN=totSc>0?Math.round(m.sn/totSc*100):34;
-          const wM=totSc>0?Math.round(m.sm/totSc*100):33;
-          const wD=Math.max(0,100-wN-wM);
+          const totSc=m.sm+m.sd;
+          const wM=totSc>0?Math.round(m.sm/totSc*100):50;
+          const wD=Math.max(0,100-wM);
           const medal=(w)=>m.winner===w?'🥇':m.winner==='tie'?'🤝':'🥈';
           return `
           <div class="wolf-month-row">
             <div class="wolf-month-name">${M3[m.month]}</div>
-            <div class="wolf-month-stat ${m.winner==='n'?'wolf-win-n':''}">
-              ${medal('n')}
-              <span>${m.n.close}</span>
-              <span class="wolf-month-sub">${pct(m.n.close,m.n.pickups)}%</span>
-            </div>
-            <div class="wolf-month-bar-wrap">
-              <div class="wolf-bar-n" style="width:${wN}%"></div>
-              <div class="wolf-bar-m" style="width:${wM}%"></div>
-              <div class="wolf-bar-d" style="width:${wD}%"></div>
-            </div>
             <div class="wolf-month-stat ${m.winner==='m'?'wolf-win-m':''}">
+              ${medal('m')}
               <span>${m.m.close}</span>
               <span class="wolf-month-sub">${pct(m.m.close,m.m.pickups)}%</span>
-              ${medal('m')}
+            </div>
+            <div class="wolf-month-bar-wrap">
+              <div class="wolf-bar-m" style="width:${wM}%"></div>
+              <div class="wolf-bar-d" style="width:${wD}%"></div>
             </div>
             <div class="wolf-month-stat ${m.winner==='d'?'wolf-win-d':''}">
               <span>${m.d.close}</span>
@@ -2485,9 +2420,9 @@ async function renderMetricsTab(){
 
   const [data, sheetRows] = await Promise.all([loadData(), fetchSheetData().catch(()=>[])]);
 
-  const { sN, sM, sD } = getStatsForPeriod(data, metricsPeriod);
+  const { sM, sD } = getStatsForPeriod(data, metricsPeriod);
 
-  const tot={calls:sN.calls+sM.calls+sD.calls,pickups:sN.pickups+sM.pickups+sD.pickups,dq:sN.dq+sM.dq+sD.dq,followup:sN.followup+sM.followup+sD.followup,close:sN.close+sM.close+sD.close};
+  const tot={calls:sM.calls+sD.calls,pickups:sM.pickups+sD.pickups,dq:sM.dq+sD.dq,followup:sM.followup+sD.followup,close:sM.close+sD.close};
   const pr=pct(tot.pickups,tot.calls);
   const cr=pct(tot.close,tot.pickups);
 
@@ -2574,7 +2509,6 @@ async function renderMetricsTab(){
     <div class="metrics-sec">
       <div class="metrics-sec-lbl">PO CLOSERU — ${lbl}</div>
       <div class="metrics-grid g2">
-        ${closerBlock('Nikola','nikola',sN,'var(--nikola)')}
         ${closerBlock('Mateja','mateja',sM,'var(--mateja)')}
         ${closerBlock('Dusica','dusica',sD,'var(--dusica)')}
       </div>
@@ -2649,7 +2583,7 @@ async function renderCommissionSection(){
     return{total,byDeal,count:memberDeals.length};
   };
 
-  const cN=calcComm('nikola'), cM=calcComm('mateja'), cD=calcComm('dusica');
+  const cM=calcComm('mateja'), cD=calcComm('dusica');
 
   const dealRows=(byDeal)=>Object.entries(byDeal).map(([key,cnt])=>{
     const d=DEALS[key];
@@ -2676,7 +2610,6 @@ async function renderCommissionSection(){
   return`<div class="metrics-sec">
     <div class="metrics-sec-lbl">PROVIZIJA — Svi Zatvoreni Dealovi</div>
     <div class="comm-grid">
-      ${commCell('Nikola','nikola',cN,'var(--nikola)')}
       ${commCell('Mateja','mateja',cM,'var(--mateja)')}
       ${commCell('Dusica','dusica',cD,'var(--dusica)')}
     </div>
@@ -2693,6 +2626,7 @@ async function loadLeads(lead_type){
       qualified:['qualified','qualified-webinar'],
       disqualified:['dq','disqualified-webinar'],
       webinar_lead:['webinar-lead'],
+      webinar_attended:['prisustvovao-webinaru'],
       lead_magnet:['lead-magnet'],
     };
     const tags=tagMap[lead_type]||[];
@@ -2704,13 +2638,14 @@ async function loadLeads(lead_type){
 }
 
 async function loadLeadCounts(){
-  const [qR,dqR,wR,lR]=await Promise.all([
+  const [qR,dqR,wR,waR,lR]=await Promise.all([
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['qualified','qualified-webinar']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['dq','disqualified-webinar']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['webinar-lead']),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['prisustvovao-webinaru']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['lead-magnet']),
   ]);
-  return{qualified:qR.count||0,disqualified:dqR.count||0,webinar_lead:wR.count||0,lead_magnet:lR.count||0};
+  return{qualified:qR.count||0,disqualified:dqR.count||0,webinar_lead:wR.count||0,webinar_attended:waR.count||0,lead_magnet:lR.count||0};
 }
 
 function mapContact(c, lead_type){
@@ -2743,10 +2678,11 @@ async function syncLeadsFromGHL(){
     if(json.error)throw new Error(json.error);
     // Merge all contacts by ID — tags stored from GHL, lead_type = highest priority match
     const seen=new Map();
-    const priority=['qualified','disqualified','webinar_lead','lead_magnet'];
+    const priority=['qualified','disqualified','webinar_attended','webinar_lead','lead_magnet'];
     [
       ...(json.qualified||[]).map(c=>mapContact(c,'qualified')),
       ...(json.disqualified||[]).map(c=>mapContact(c,'disqualified')),
+      ...(json.webinarAttended||[]).map(c=>mapContact(c,'webinar_attended')),
       ...(json.webinarLead||[]).map(c=>mapContact(c,'webinar_lead')),
       ...(json.leadMagnet||[]).map(c=>mapContact(c,'lead_magnet')),
     ].forEach(r=>{
@@ -2900,14 +2836,12 @@ function renderLeads(all){
 
   // Assign filter
   let leads=searched;
-  if(leadsFilter==='nikola')       leads=searched.filter(l=>l.assigned_to==='nikola');
-  else if(leadsFilter==='mateja')   leads=searched.filter(l=>l.assigned_to==='mateja');
+  if(leadsFilter==='mateja')   leads=searched.filter(l=>l.assigned_to==='mateja');
   else if(leadsFilter==='dusica')   leads=searched.filter(l=>l.assigned_to==='dusica');
   else if(leadsFilter==='unassigned') leads=searched.filter(l=>!l.assigned_to);
 
   const fc={
     all:searched.length,
-    nikola:searched.filter(l=>l.assigned_to==='nikola').length,
     mateja:searched.filter(l=>l.assigned_to==='mateja').length,
     dusica:searched.filter(l=>l.assigned_to==='dusica').length,
     unassigned:searched.filter(l=>!l.assigned_to).length
@@ -2915,12 +2849,12 @@ function renderLeads(all){
 
   const fuToday=all.filter(l=>l.follow_up_date&&l.follow_up_date<=todayStr&&l.status!=='Closed'&&l.status!=='DQ');
 
-  const typePill=t=>t==='qualified'?'<span class="ltr-type type-q">Qualified</span>':t==='disqualified'?'<span class="ltr-type type-dq">Disqualified</span>':t==='webinar_lead'?'<span class="ltr-type type-wb">Webinar</span>':'<span class="ltr-type type-lm">Lead Magnet</span>';
+  const typePill=t=>t==='qualified'?'<span class="ltr-type type-q">Qualified</span>':t==='disqualified'?'<span class="ltr-type type-dq">Disqualified</span>':t==='webinar_lead'?'<span class="ltr-type type-wb">Webinar</span>':t==='webinar_attended'?'<span class="ltr-type type-wa">17.05.2026</span>':'<span class="ltr-type type-lm">Lead Magnet</span>';
   const syncSvg=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>`;
 
   const rows=leads.map(c=>{
     const initials=(c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-    const avCls=c.assigned_to==='nikola'?'av-n':c.assigned_to==='mateja'?'av-m':c.assigned_to==='dusica'?'av-d':'';
+    const avCls=c.assigned_to==='mateja'?'av-m':c.assigned_to==='dusica'?'av-d':'';
     const meta=[c.phone,c.instagram?`@${c.instagram.replace('@','')}`:''].filter(Boolean).join(' · ');
     const stOpts=['Novi','Follow Up','Closed','DQ'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('');
     let fuCls=''; if(c.follow_up_date){fuCls=c.follow_up_date===todayStr?'fu-today':c.follow_up_date<todayStr?'fu-overdue':'';}
@@ -2935,7 +2869,6 @@ function renderLeads(all){
       </td>
       <td class="col-desk" onclick="event.stopPropagation()">
         <div class="ltr-assign">
-          <button class="ltr-ab ${c.assigned_to==='nikola'?'on-n':''}" onclick="assignLead('${esc(c.id)}','nikola')">N</button>
           <button class="ltr-ab ${c.assigned_to==='mateja'?'on-m':''}" onclick="assignLead('${esc(c.id)}','mateja')">M</button>
           <button class="ltr-ab ${c.assigned_to==='dusica'?'on-d':''}" onclick="assignLead('${esc(c.id)}','dusica')">D</button>
         </div>
@@ -2972,6 +2905,9 @@ function renderLeads(all){
       <button class="lsb-btn tab-wb ${leadsSubTab==='webinar_lead'?'active':''}" onclick="setLeadsSubTab('webinar_lead')">
         <span class="lsb-count">${leadCounts.webinar_lead}</span><span class="lsb-label">Webinar</span>
       </button>
+      <button class="lsb-btn tab-wa ${leadsSubTab==='webinar_attended'?'active':''}" onclick="setLeadsSubTab('webinar_attended')">
+        <span class="lsb-count">${leadCounts.webinar_attended}</span><span class="lsb-label">17.05.2026</span>
+      </button>
       <button class="lsb-btn tab-lm ${leadsSubTab==='lead_magnet'?'active':''}" onclick="setLeadsSubTab('lead_magnet')">
         <span class="lsb-count">${leadCounts.lead_magnet}</span><span class="lsb-label">Lead Magnet</span>
       </button>
@@ -2984,7 +2920,6 @@ function renderLeads(all){
       </div>
       <div class="leads-filter">
         <button class="filter-btn ${leadsFilter==='all'?'active':''}" data-filter="all" onclick="filterLeads('all')">Svi (${fc.all})</button>
-        <button class="filter-btn ${leadsFilter==='nikola'?'active':''}" data-filter="nikola" onclick="filterLeads('nikola')">Nikola</button>
         <button class="filter-btn ${leadsFilter==='mateja'?'active':''}" data-filter="mateja" onclick="filterLeads('mateja')">Mateja</button>
         <button class="filter-btn ${leadsFilter==='dusica'?'active':''}" data-filter="dusica" onclick="filterLeads('dusica')">Dusica</button>
         <button class="filter-btn ${leadsFilter==='unassigned'?'active':''}" data-filter="unassigned" onclick="filterLeads('unassigned')">Nedodeljeni</button>
@@ -3020,8 +2955,8 @@ function openLeadDetail(id){
   currentLeadId=id;
   const todayStr=new Date().toISOString().slice(0,10);
   const initials=(c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
-  const avCls=c.assigned_to==='nikola'?'av-n':c.assigned_to==='mateja'?'av-m':c.assigned_to==='dusica'?'av-d':'';
-  const typePillMap={qualified:'<span class="ltr-type type-q">Qualified</span>',disqualified:'<span class="ltr-type type-dq">Disqualified</span>',webinar_lead:'<span class="ltr-type type-wb">Webinar</span>',lead_magnet:'<span class="ltr-type type-lm">Lead Magnet</span>'};
+  const avCls=c.assigned_to==='mateja'?'av-m':c.assigned_to==='dusica'?'av-d':'';
+  const typePillMap={qualified:'<span class="ltr-type type-q">Qualified</span>',disqualified:'<span class="ltr-type type-dq">Disqualified</span>',webinar_lead:'<span class="ltr-type type-wb">Webinar</span>',webinar_attended:'<span class="ltr-type type-wa">17.05.2026</span>',lead_magnet:'<span class="ltr-type type-lm">Lead Magnet</span>'};
   const stOpts=['Novi','Follow Up','Closed','DQ'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('');
   let fuCls=''; if(c.follow_up_date){fuCls=c.follow_up_date===todayStr?'fu-today':c.follow_up_date<todayStr?'fu-overdue':'';}
   const dealOpts=Object.entries(DEALS).map(([k,v])=>`<option value="${k}" ${c.deal===k?'selected':''}>${v.icon} ${v.label} — ${v.price}</option>`).join('');
@@ -3048,9 +2983,6 @@ function openLeadDetail(id){
         <button class="ldp-st-btn ${c.status==='DQ'?'ldp-st-dq':''}" onclick="updateLeadStatus('${esc(c.id)}','DQ')">DQ</button>
       </div>
       <div class="ldp-assign-row">
-        <button class="ldp-assign-btn ${c.assigned_to==='nikola'?'ldp-ab-n':''}" onclick="assignLeadPanel('${esc(c.id)}','nikola')">
-          <span style="font-size:15px;font-weight:900;font-family:var(--font)">N</span> Nikola
-        </button>
         <button class="ldp-assign-btn ${c.assigned_to==='mateja'?'ldp-ab-m':''}" onclick="assignLeadPanel('${esc(c.id)}','mateja')">
           <span style="font-size:15px;font-weight:900;font-family:var(--font)">M</span> Mateja
         </button>
@@ -3118,7 +3050,7 @@ function renderLeadCard(lead, subTab){
   // Avatar initials
   const words=(lead.name||'?').trim().split(/\s+/);
   const initials=(words[0]?.[0]||'')+(words[1]?.[0]||'');
-  const avCls=assigned==='nikola'?'av-n':assigned==='mateja'?'av-m':assigned==='dusica'?'av-d':'';
+  const avCls=assigned==='mateja'?'av-m':assigned==='dusica'?'av-d':'';
 
   // Status pill
   const stPillCls={'Novi':'s-novi','Follow Up':'s-followup','Closed':'s-closed','DQ':'s-dq'}[st]||'s-novi';
@@ -3158,9 +3090,6 @@ function renderLeadCard(lead, subTab){
 
     <div class="lc-actions" style="margin-top:14px">
       <div class="lc-assign">
-        <button class="lc-ab ${assigned==='nikola'?'on-n':''}" onclick="assignLead('${esc(lead.id)}','nikola')">
-          <img src="nikola.png" onerror="this.style.display='none'"/> Nikola
-        </button>
         <button class="lc-ab ${assigned==='mateja'?'on-m':''}" onclick="assignLead('${esc(lead.id)}','mateja')">
           <img src="mateja.png" onerror="this.style.display='none'"/> Mateja
         </button>
@@ -3400,17 +3329,15 @@ function initChart(data) {
   const labels=Array.from({length:days},(_,i)=>i+1);
   let datasets;
   if (currentTab==='team'){
-    const dmN=gm(data,'nikola',currentYear,currentMonth);
     const dmM=gm(data,'mateja',currentYear,currentMonth);
     const dmD=gm(data,'dusica',currentYear,currentMonth);
     datasets=[
-      {label:'Nikola',data:labels.map(d=>dmN[d]?.calls||0),backgroundColor:'rgba(59,130,246,.75)',borderRadius:4,stack:'s'},
       {label:'Mateja',data:labels.map(d=>dmM[d]?.calls||0),backgroundColor:'rgba(168,85,247,.75)',borderRadius:4,stack:'s'},
       {label:'Dusica',data:labels.map(d=>dmD[d]?.calls||0),backgroundColor:'rgba(249,115,22,.75)',borderRadius:4,stack:'s'}
     ];
   } else {
     const dm=gm(data,currentTab,currentYear,currentMonth);
-    const rgb=currentTab==='nikola'?'59,130,246':currentTab==='dusica'?'249,115,22':'168,85,247';
+    const rgb=currentTab==='dusica'?'249,115,22':'168,85,247';
     datasets=[
       {label:'Pozivi',data:labels.map(d=>dm[d]?.calls||0),backgroundColor:`rgba(${rgb},.7)`,borderRadius:4},
       {label:'Javljanja',data:labels.map(d=>dm[d]?.pickups||0),backgroundColor:`rgba(${rgb},.3)`,borderRadius:4},
@@ -3433,7 +3360,7 @@ function initChart(data) {
 /* ── MODAL ── */
 let editDay=null,editMember=null;
 function openModal(day,member){
-  editDay=day;editMember=member||(currentTab!=='team'?currentTab:'nikola');
+  editDay=day;editMember=member||(currentTab!=='team'?currentTab:'mateja');
   document.getElementById('fMember').value=editMember;
   document.getElementById('fDay').value=day||'';
   document.getElementById('modalTitle').textContent=day?`Izmeni Dan ${day}`:'Unesi Dan';
