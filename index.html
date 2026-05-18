@@ -2818,41 +2818,45 @@ async function renderAdsView(){
 function filterLeads(f){
   leadsFilter=f;
   document.querySelectorAll('.filter-btn').forEach(b=>b.classList.toggle('active',b.dataset.filter===f));
-  renderLeads(cachedLeads);
+  refreshLeadRows();
 }
 
 function searchLeads(q){
   leadsSearch=q;
-  renderLeads(cachedLeads);
+  refreshLeadRows();
 }
 
-function renderLeads(all){
-  const el=document.getElementById('mainContent');
-  const todayStr=new Date().toISOString().slice(0,10);
+// Debounced search — only re-renders the table body & filter bar,
+// never the <input> itself, so focus/cursor is preserved while typing.
+let _leadSearchTimer=null;
+function scheduleLeadSearch(){
+  clearTimeout(_leadSearchTimer);
+  _leadSearchTimer=setTimeout(refreshLeadRows,120);
+}
 
-  // Search
+// Computes the searched + assign-filtered lead list and the filter counts.
+function computeLeads(){
   const q=leadsSearch.trim().toLowerCase();
-  let searched=q ? all.filter(l=>[l.name,l.email,l.phone,l.instagram].some(v=>v&&v.toLowerCase().includes(q))) : all;
-
-  // Assign filter
+  const all=cachedLeads||[];
+  const searched=q ? all.filter(l=>[l.name,l.email,l.phone,l.instagram].some(v=>v&&v.toLowerCase().includes(q))) : all;
   let leads=searched;
-  if(leadsFilter==='mateja')   leads=searched.filter(l=>l.assigned_to==='mateja');
+  if(leadsFilter==='mateja')        leads=searched.filter(l=>l.assigned_to==='mateja');
   else if(leadsFilter==='dusica')   leads=searched.filter(l=>l.assigned_to==='dusica');
   else if(leadsFilter==='unassigned') leads=searched.filter(l=>!l.assigned_to);
-
   const fc={
     all:searched.length,
     mateja:searched.filter(l=>l.assigned_to==='mateja').length,
     dusica:searched.filter(l=>l.assigned_to==='dusica').length,
-    unassigned:searched.filter(l=>!l.assigned_to).length
+    unassigned:searched.filter(l=>!l.assigned_to).length,
   };
+  return {searched,leads,fc};
+}
 
-  const fuToday=all.filter(l=>l.follow_up_date&&l.follow_up_date<=todayStr&&l.status!=='Closed'&&l.status!=='DQ');
-
+// Builds just the <tr> rows HTML for the leads table.
+function buildLeadRows(leads){
+  const todayStr=new Date().toISOString().slice(0,10);
   const typePill=t=>t==='qualified'?'<span class="ltr-type type-q">Qualified</span>':t==='disqualified'?'<span class="ltr-type type-dq">Disqualified</span>':t==='webinar_lead'?'<span class="ltr-type type-wb">Webinar</span>':t==='webinar_attended'?'<span class="ltr-type type-wa">17.05.2026</span>':'<span class="ltr-type type-lm">Lead Magnet</span>';
-  const syncSvg=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>`;
-
-  const rows=leads.map(c=>{
+  return leads.map(c=>{
     const initials=(c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const avCls=c.assigned_to==='mateja'?'av-m':c.assigned_to==='dusica'?'av-d':'';
     const meta=[c.phone,c.instagram?`@${c.instagram.replace('@','')}`:''].filter(Boolean).join(' · ');
@@ -2879,6 +2883,32 @@ function renderLeads(all){
       <td><span class="ltr-arrow">›</span></td>
     </tr>`;
   }).join('')||`<tr><td colspan="6" style="padding:48px 20px;text-align:center;color:var(--muted)"><div style="font-size:24px;margin-bottom:8px">🎯</div><div style="font-size:13px;font-weight:700">Nema leadova</div></td></tr>`;
+}
+
+// Updates ONLY the table body + filter-bar counts (preserves search focus).
+function refreshLeadRows(){
+  const {leads,fc}=computeLeads();
+  const body=document.getElementById('leadsBody');
+  if(body) body.innerHTML=buildLeadRows(leads);
+  const bar=document.getElementById('leadsFilterBar');
+  if(bar){
+    bar.querySelectorAll('.filter-btn').forEach(b=>{
+      const f=b.dataset.filter;
+      b.classList.toggle('active',f===leadsFilter);
+      if(f==='all') b.textContent=`Svi (${fc.all})`;
+    });
+  }
+}
+
+function renderLeads(all){
+  const el=document.getElementById('mainContent');
+  const todayStr=new Date().toISOString().slice(0,10);
+
+  const {leads,fc}=computeLeads();
+  const fuToday=(cachedLeads||[]).filter(l=>l.follow_up_date&&l.follow_up_date<=todayStr&&l.status!=='Closed'&&l.status!=='DQ');
+  const syncSvg=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>`;
+
+  const rows=buildLeadRows(leads);
 
   const total=leadCounts.qualified+leadCounts.disqualified+leadCounts.webinar_lead+leadCounts.lead_magnet;
   el.innerHTML=`<div style="width:100%">
@@ -2916,9 +2946,9 @@ function renderLeads(all){
     <div class="leads-toolbar">
       <div class="leads-search-wrap">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input class="leads-search" placeholder="Pretraži ime, email, telefon…" value="${leadsSearch}" oninput="leadsSearch=this.value;renderLeads(cachedLeads)" />
+        <input class="leads-search" placeholder="Pretraži ime, email, telefon…" value="${leadsSearch}" oninput="leadsSearch=this.value;scheduleLeadSearch()" />
       </div>
-      <div class="leads-filter">
+      <div class="leads-filter" id="leadsFilterBar">
         <button class="filter-btn ${leadsFilter==='all'?'active':''}" data-filter="all" onclick="filterLeads('all')">Svi (${fc.all})</button>
         <button class="filter-btn ${leadsFilter==='mateja'?'active':''}" data-filter="mateja" onclick="filterLeads('mateja')">Mateja</button>
         <button class="filter-btn ${leadsFilter==='dusica'?'active':''}" data-filter="dusica" onclick="filterLeads('dusica')">Dusica</button>
@@ -2943,7 +2973,7 @@ function renderLeads(all){
           <th class="col-desk">Follow Up</th>
           <th></th>
         </tr></thead>
-        <tbody>${rows}</tbody>
+        <tbody id="leadsBody">${rows}</tbody>
       </table>
     </div>
   </div>`;
