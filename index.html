@@ -644,6 +644,35 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 /* ── ADS VIEW ── */
 .ads-view-btn { display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:99px;border:1px solid var(--b);background:var(--s2);color:var(--muted);font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px; }
 .ads-view-btn.active { border-color:var(--accent);background:rgba(59,130,246,.1);color:var(--accent); }
+.tag-filter {
+  padding:7px 10px;border-radius:99px;border:1px solid var(--b);
+  background:var(--s2);color:var(--text);font-family:var(--font);
+  font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.3px;
+  max-width: 180px;
+}
+.tag-filter:focus { outline: none; border-color: var(--b2); }
+.export-btn {
+  display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:99px;
+  border:1px solid var(--b);background:var(--s2);color:var(--muted);
+  font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;
+  transition:all .2s;letter-spacing:.3px;
+}
+.export-btn:hover { color: var(--green); border-color: rgba(34,197,94,.4); }
+
+.pipeline-strip {
+  display:flex; gap:10px; margin: 0 0 16px 0;
+}
+.pipeline-cell {
+  flex:1; background: var(--s2); border: 1px solid var(--b);
+  border-radius: 12px; padding: 12px 16px;
+  display: flex; align-items: baseline; gap: 10px; justify-content: space-between;
+}
+.pipeline-lbl { font-size:10px; font-weight:700; color:var(--muted); letter-spacing:1px; text-transform:uppercase; }
+.pipeline-val { font-size:20px; font-weight:900; color:var(--text); letter-spacing:-.5px; }
+@media (max-width: 600px) {
+  .pipeline-cell { padding: 10px 12px; }
+  .pipeline-val { font-size: 16px; }
+}
 .ads-tbl-wrap { background:var(--s1);border:1px solid var(--b);border-radius:var(--r);overflow:hidden; }
 .ads-tbl { width:100%;border-collapse:collapse; }
 .ads-tbl thead th { text-align:left;font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--b);white-space:nowrap;background:var(--s1); }
@@ -693,6 +722,14 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .type-wb { background: rgba(168,85,247,.10);  color: #a855f7; }
 .type-wa { background: rgba(16,185,129,.10);  color: #10b981; }
 .type-lm { background: rgba(234,179,8,.10);   color: var(--yellow); }
+.heat {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 9px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase;
+  padding: 3px 7px; border-radius: 99px; margin-left: 6px; vertical-align: middle;
+}
+.heat-hot  { background: rgba(244,63,94,.13);  color: #f43f5e; }
+.heat-warm { background: rgba(234,179,8,.12);  color: var(--yellow); }
+.heat-cold { background: rgba(96,165,250,.10); color: #60a5fa; }
 .ltr-status-sel {
   padding: 5px 8px; border-radius: 8px; border: 1px solid var(--b);
   background: var(--s2); color: var(--text); font-family: var(--font);
@@ -1837,6 +1874,7 @@ let currentLeadId = null;
 let leadsSearch  = '';
 let leadsShowFollowUp = false;  // when true, only show leads needing follow-up today
 let leadsShowStale    = false;  // when true, only show stale (untouched 14d+) leads
+let leadsTagFilter    = '';     // empty = no tag filter; otherwise exact tag string
 let cachedLeads  = [];
 let leadCounts   = { all: 0, qualified: 0, disqualified: 0, webinar_lead: 0, webinar_attended: 0, lead_magnet: 0 };
 let openNotes    = new Set();
@@ -3118,6 +3156,43 @@ async function loadLeads(lead_type){
   return data||[];
 }
 
+/* ─────────────────── LEAD SCORING ─────────────────────────────────
+ * Heuristic 0–100 score, then bucketed into 🔥 hot / 🌤 warm / ❄️ cold.
+ * Signals:
+ *  + 35 if attended the webinar (prisustvovao-webinaru)
+ *  + 25 if qualified-webinar tagged
+ *  + 15 if status = Follow Up (engaged but pending)
+ *  + 20 if has follow-up date in future
+ *  + 15 if added within last 3 days (recency)
+ *  +  5 if has Instagram (extra contactability)
+ *  - 30 if untouched > 14 days
+ *  - 50 if status = DQ
+ * ─────────────────────────────────────────────────────────────── */
+function leadScore(l){
+  if (!l) return 0;
+  if (l.status === 'Closed') return 100;
+  if (l.status === 'DQ') return 0;
+  let s = 20;
+  const tags = l.tags || [];
+  if (tags.includes('prisustvovao-webinaru')) s += 35;
+  if (tags.includes('qualified-webinar') || tags.includes('qualified')) s += 25;
+  if (l.status === 'Follow Up') s += 15;
+  const todayStr = new Date().toISOString().slice(0,10);
+  if (l.follow_up_date && l.follow_up_date >= todayStr) s += 20;
+  if (l.date_added) {
+    const days = (Date.now() - new Date(l.date_added).getTime()) / 86400000;
+    if (days <= 3) s += 15;
+    else if (days > 14 && !l.follow_up_date) s -= 30;
+  }
+  if (l.instagram) s += 5;
+  return Math.max(0, Math.min(100, s));
+}
+function leadHeat(score){
+  if (score >= 70) return { label: 'Hot',  cls: 'heat-hot',  icon: '🔥' };
+  if (score >= 45) return { label: 'Warm', cls: 'heat-warm', icon: '🌤' };
+  return                  { label: 'Cold', cls: 'heat-cold', icon: '❄️' };
+}
+
 /* ─────────────────── ACTIVITY LOG ─────────────────────────────────
  * Every status/assign/followup/deal/note change is persisted into the
  * `lead_activities` Supabase table so we have an audit trail per lead.
@@ -3637,6 +3712,51 @@ function toggleStaleView(){
   renderLeads(cachedLeads);
 }
 
+function setTagFilter(tag){
+  leadsTagFilter=tag||'';
+  refreshLeadRows();
+}
+
+// Unique tags currently in the loaded lead set, sorted by frequency.
+function availableTags(){
+  const counts = {};
+  (cachedLeads||[]).forEach(l => (l.tags||[]).forEach(t => { counts[t] = (counts[t]||0)+1; }));
+  return Object.entries(counts).sort((a,b)=>b[1]-a[1]).map(([t,n])=>({tag:t,n}));
+}
+
+function exportLeadsCSV(){
+  const {leads} = computeLeads();
+  if (!leads.length) { alert('Nema leadova za eksport.'); return; }
+  const cols = ['name','email','phone','instagram','status','lead_type','assigned_to','follow_up_date','date_added','tags','deal','notes'];
+  const head = cols.join(',');
+  const escCsv = v => {
+    if (v == null) return '';
+    const s = Array.isArray(v) ? v.join(';') : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g,'""')}"` : s;
+  };
+  const body = leads.map(l => cols.map(c => escCsv(l[c])).join(',')).join('\n');
+  const csv = head + '\n' + body;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const stamp = new Date().toISOString().slice(0,10);
+  a.download = `leads_${leadsSubTab}_${stamp}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function pipelineValue(leads){
+  let openValue = 0, closedValue = 0;
+  (leads||[]).forEach(l => {
+    if (!l.deal || !DEAL_PRICES[l.deal]) return;
+    const price = DEAL_PRICES[l.deal];
+    if (l.status === 'Closed') closedValue += price;
+    else if (l.status !== 'DQ') openValue += price;
+  });
+  return { open: openValue, closed: closedValue };
+}
+
 // Debounced search — only re-renders the table body & filter bar,
 // never the <input> itself, so focus/cursor is preserved while typing.
 let _leadSearchTimer=null;
@@ -3653,6 +3773,9 @@ function computeLeads(){
   if(leadsShowFollowUp){
     const todayStr=new Date().toISOString().slice(0,10);
     searched=searched.filter(l=>l.follow_up_date===todayStr&&l.status!=='Closed'&&l.status!=='DQ');
+  }
+  if(leadsTagFilter){
+    searched=searched.filter(l=>Array.isArray(l.tags)&&l.tags.includes(leadsTagFilter));
   }
   if(leadsShowStale){
     // Stale = open AND created >14d ago AND no upcoming follow-up
@@ -3699,7 +3822,7 @@ function buildLeadRows(leads){
         <div class="ltr-av ${avCls}">${initials}</div>
         <div><div class="ltr-name">${esc(c.name)}${contactActions(c)}</div>${meta?`<div class="ltr-sub">${esc(meta)}</div>`:''}</div>
       </div></td>
-      <td>${typePill(c.lead_type)}</td>
+      <td>${typePill(c.lead_type)}${(()=>{const h=leadHeat(leadScore(c));return `<span class="heat ${h.cls}" title="Score: ${leadScore(c)}">${h.icon} ${h.label}</span>`;})()}</td>
       <td class="col-mob" onclick="event.stopPropagation()">
         <select class="ltr-status-sel" onchange="updateLeadStatus('${esc(c.id)}',this.value)">${stOpts}</select>
       </td>
@@ -3921,14 +4044,27 @@ function renderLeads(all){
         <button class="filter-btn ${leadsFilter==='dusica'?'active':''}" data-filter="dusica" onclick="filterLeads('dusica')">Dusica</button>
         <button class="filter-btn ${leadsFilter==='unassigned'?'active':''}" data-filter="unassigned" onclick="filterLeads('unassigned')">Nedodeljeni</button>
       </div>
+      <select class="tag-filter" onchange="setTagFilter(this.value)" title="Filtriraj po tagu">
+        <option value="">Svi tagovi</option>
+        ${availableTags().slice(0,30).map(t=>`<option value="${esc(t.tag)}" ${leadsTagFilter===t.tag?'selected':''}>${esc(t.tag)} (${t.n})</option>`).join('')}
+      </select>
       <button class="ads-view-btn ${leadsView==='ads'?'active':''}" onclick="toggleAdsView()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/><path d="M7 8h2m4 0h2M7 12h10"/></svg>
         Ads
+      </button>
+      <button class="export-btn" onclick="exportLeadsCSV()" title="Eksport CSV">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        CSV
       </button>
       <button class="sync-btn" id="syncBtn" onclick="syncLeadsFromGHL()">
         ${syncSvg}<span class="sync-label">Sinhronizuj GHL</span>
       </button>
     </div>
+
+    ${(()=>{const pv=pipelineValue(cachedLeads);return (pv.open||pv.closed)?`<div class="pipeline-strip">
+      <div class="pipeline-cell"><span class="pipeline-lbl">Pipeline (open)</span><span class="pipeline-val">$${pv.open.toLocaleString('sr-RS')}</span></div>
+      <div class="pipeline-cell"><span class="pipeline-lbl">Zatvoreno</span><span class="pipeline-val" style="color:var(--green)">$${pv.closed.toLocaleString('sr-RS')}</span></div>
+    </div>`:'';})()}
 
     <div class="leads-tbl-wrap">
       <table class="leads-tbl">
