@@ -900,6 +900,49 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   .ms-closer-val { font-size:26px; }
 }
 
+/* ── SPEED-TO-LEAD TOAST ───────────────── */
+.stl-toast-wrap {
+  position: fixed; right: 16px; bottom: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+  z-index: 9999; max-width: 360px; pointer-events: none;
+}
+.stl-toast {
+  pointer-events: auto;
+  background: linear-gradient(135deg, rgba(34,197,94,.16), rgba(34,197,94,.06));
+  border: 1px solid rgba(34,197,94,.4);
+  border-radius: 14px;
+  padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start;
+  box-shadow: 0 12px 32px rgba(0,0,0,.4), 0 0 24px rgba(34,197,94,.15);
+  animation: stl-slide-in .35s ease-out;
+  cursor: pointer; transition: transform .12s;
+}
+.stl-toast:hover { transform: translateX(-2px); }
+.stl-toast.leaving { animation: stl-slide-out .25s ease-in forwards; }
+.stl-toast-icon {
+  font-size: 22px; flex-shrink: 0; line-height: 1;
+  width: 36px; height: 36px; border-radius: 10px;
+  background: rgba(34,197,94,.2); display: grid; place-items: center;
+}
+.stl-toast-body { flex: 1; min-width: 0; }
+.stl-toast-title { font-size: 11px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--green); }
+.stl-toast-name { font-size: 14px; font-weight: 800; color: var(--text); margin-top: 3px; }
+.stl-toast-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.stl-toast-close {
+  flex-shrink: 0; color: var(--muted2); cursor: pointer;
+  font-size: 18px; line-height: 1; padding: 2px 4px;
+}
+.stl-toast-close:hover { color: var(--text); }
+@keyframes stl-slide-in {
+  from { transform: translateX(120%); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+@keyframes stl-slide-out {
+  to { transform: translateX(120%); opacity: 0; }
+}
+@media (max-width: 600px) {
+  .stl-toast-wrap { left: 12px; right: 12px; max-width: none; bottom: 72px; }
+}
+
 /* ── MEMBER FOLLOW-UP LIST ──────────────── */
 .mfu-section { padding: 4px 0 10px; }
 .mfu-section-lbl {
@@ -1723,6 +1766,7 @@ async function signOut() {
     if (session?.user) {
       hideAuthGate();
       setHeaderUser(session.user);
+      stlStart();
     } else {
       showAuthGate();
       setHeaderUser(null);
@@ -1734,6 +1778,7 @@ async function signOut() {
   if (!session) { showAuthGate(); return; }
   hideAuthGate();
   setHeaderUser(session.user);
+  stlStart();
 
   // Animate progress bar
   let prog = 0;
@@ -2733,6 +2778,151 @@ async function loadLeads(lead_type){
   const {data,error}=await q;
   if(error){console.error(error);return[];}
   return data||[];
+}
+
+/* ─────────────────── SPEED-TO-LEAD NOTIFICATIONS ──────────────────
+ * Polls /api/ghl-recent every ~90s. The first poll establishes a
+ * baseline of "already seen" lead IDs (no notifications fired).
+ * After that, any new contact whose tags overlap a tracker-relevant
+ * tag fires a desktop notification + in-app toast. Click → opens
+ * the lead inside the Leads tab.
+ * ─────────────────────────────────────────────────────────────── */
+const STL_TRACKER_TAGS = new Set([
+  'qualified','qualified-webinar',
+  'dq','disqualified-webinar',
+  'webinar-lead','prisustvovao-webinaru',
+  'lead-magnet'
+]);
+const STL_POLL_MS    = 90000;
+const STL_STORAGE_KEY = 'toc:seen-lead-ids';
+let _stlTimer = null;
+let _stlSeen  = null;            // Set<string> of lead IDs already known
+let _stlInitialized = false;
+
+function stlLoadSeenFromStorage(){
+  try {
+    const raw = localStorage.getItem(STL_STORAGE_KEY);
+    if (!raw) return null;
+    const arr = JSON.parse(raw);
+    if (!Array.isArray(arr)) return null;
+    return new Set(arr);
+  } catch { return null; }
+}
+function stlSaveSeenToStorage(){
+  try {
+    // Cap at last 500 ids to avoid runaway storage
+    const arr = [..._stlSeen].slice(-500);
+    localStorage.setItem(STL_STORAGE_KEY, JSON.stringify(arr));
+  } catch {}
+}
+
+async function stlRequestPermission(){
+  if (!('Notification' in window)) return 'unsupported';
+  if (Notification.permission === 'granted') return 'granted';
+  if (Notification.permission === 'denied')  return 'denied';
+  try { return await Notification.requestPermission(); } catch { return 'denied'; }
+}
+
+function stlIsTrackerContact(c){
+  return (c.tags || []).some(t => STL_TRACKER_TAGS.has(t));
+}
+
+function stlShowToast(contact){
+  let wrap = document.getElementById('stl-toast-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'stl-toast-wrap';
+    wrap.className = 'stl-toast-wrap';
+    document.body.appendChild(wrap);
+  }
+  const toast = document.createElement('div');
+  toast.className = 'stl-toast';
+  const meta = [contact.phone, contact.email].filter(Boolean).join(' · ');
+  toast.innerHTML = `
+    <div class="stl-toast-icon">⚡</div>
+    <div class="stl-toast-body">
+      <div class="stl-toast-title">Novi lead</div>
+      <div class="stl-toast-name">${esc(contact.name||'Nepoznat')}</div>
+      ${meta?`<div class="stl-toast-meta">${esc(meta)}</div>`:''}
+    </div>
+    <div class="stl-toast-close" title="Zatvori">×</div>
+  `;
+  const dismiss = () => {
+    toast.classList.add('leaving');
+    setTimeout(()=>toast.remove(), 250);
+  };
+  toast.querySelector('.stl-toast-close').addEventListener('click', e => { e.stopPropagation(); dismiss(); });
+  toast.addEventListener('click', () => {
+    dismiss();
+    // Best-effort: switch to Leads tab; lead may not yet be in cache
+    if (typeof setTab === 'function') setTab('leads');
+    setTimeout(() => {
+      if (typeof openLeadDetail === 'function' && (cachedLeads||[]).find(l=>l.id===contact.id)) {
+        openLeadDetail(contact.id);
+      }
+    }, 600);
+  });
+  wrap.appendChild(toast);
+  setTimeout(dismiss, 12000);
+}
+
+function stlShowDesktopNotification(contact){
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  try {
+    const meta = [contact.phone, contact.email].filter(Boolean).join(' · ');
+    const n = new Notification('⚡ Novi lead', {
+      body: `${contact.name||'Nepoznat'}${meta?'\n'+meta:''}`,
+      icon: '/thenewioslogov2.png',
+      tag: 'toc-new-lead-'+contact.id,
+    });
+    n.onclick = () => {
+      window.focus();
+      if (typeof setTab === 'function') setTab('leads');
+      n.close();
+    };
+  } catch (e) { console.warn('Notification failed:', e); }
+}
+
+async function stlPoll(){
+  try {
+    const r = await fetch('/api/ghl-recent', { cache: 'no-store' });
+    if (!r.ok) return;
+    const json = await r.json();
+    const contacts = (json.contacts || []).filter(stlIsTrackerContact);
+    if (!_stlSeen) _stlSeen = new Set();
+
+    if (!_stlInitialized) {
+      // First poll → baseline: record IDs but don't notify.
+      // If localStorage already had a set, this just merges.
+      contacts.forEach(c => _stlSeen.add(c.id));
+      stlSaveSeenToStorage();
+      _stlInitialized = true;
+      return;
+    }
+
+    const fresh = contacts.filter(c => !_stlSeen.has(c.id));
+    fresh.forEach(c => {
+      _stlSeen.add(c.id);
+      stlShowToast(c);
+      stlShowDesktopNotification(c);
+    });
+    if (fresh.length) stlSaveSeenToStorage();
+  } catch (e) {
+    // Quiet — network blips shouldn't spam logs
+  }
+}
+
+function stlStart(){
+  if (_stlTimer) return;
+  _stlSeen = stlLoadSeenFromStorage() || new Set();
+  _stlInitialized = _stlSeen.size > 0;  // if we have history, treat next fresh-only
+  stlRequestPermission();  // fire-and-forget
+  stlPoll();               // immediate first poll
+  _stlTimer = setInterval(stlPoll, STL_POLL_MS);
+  // Re-poll when tab becomes visible again
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') stlPoll();
+  });
 }
 
 async function loadLeadCounts(){
