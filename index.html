@@ -364,7 +364,11 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   display:flex; align-items:center; gap:12px; margin-bottom:20px;
   padding:14px 18px; border-radius:12px;
   background:rgba(234,179,8,.08); border:1px solid rgba(234,179,8,.25);
+  transition: background .15s, border-color .15s, transform .08s;
 }
+.fu-today-banner:hover { background:rgba(234,179,8,.13); border-color:rgba(234,179,8,.4); }
+.fu-today-banner:active { transform: scale(.995); }
+.fu-today-banner.active { background:rgba(234,179,8,.18); border-color:rgba(234,179,8,.6); }
 .fu-today-banner-icon { font-size:20px; flex-shrink:0; }
 .fu-today-banner-text { flex:1; }
 .fu-today-banner-title { font-size:13px; font-weight:800; color:var(--yellow); }
@@ -1584,6 +1588,7 @@ let leadsSubTab  = 'all';   // 'all' | 'qualified' | 'disqualified' | 'webinar_l
 let leadsView    = 'list'; // 'list' | 'ads'
 let currentLeadId = null;
 let leadsSearch  = '';
+let leadsShowFollowUp = false;  // when true, only show leads needing follow-up today
 let cachedLeads  = [];
 let leadCounts   = { qualified: 0, disqualified: 0, webinar_lead: 0, webinar_attended: 0, lead_magnet: 0 };
 let openNotes    = new Set();
@@ -2691,8 +2696,25 @@ async function syncLeadsFromGHL(){
     });
     const rows=[...seen.values()];
     if(rows.length){
-      const {error}=await sb.from('ghl_leads').upsert(rows,{onConflict:'id',ignoreDuplicates:false});
-      if(error)console.error('Upsert error:',error);
+      // Upsert in chunks to avoid request-size limits
+      const CHUNK=500;
+      for(let i=0;i<rows.length;i+=CHUNK){
+        const {error}=await sb.from('ghl_leads').upsert(rows.slice(i,i+CHUNK),{onConflict:'id',ignoreDuplicates:false});
+        if(error){console.error('Upsert error:',error);break;}
+      }
+    }
+    // Full reconciliation: delete any Supabase rows no longer in GHL.
+    // (Contacts removed from GHL or no longer matching tracker tags.)
+    const currentIds=new Set(rows.map(r=>r.id));
+    const {data:existing,error:fetchErr}=await sb.from('ghl_leads').select('id').limit(20000);
+    if(!fetchErr && existing){
+      const stale=existing.filter(r=>!currentIds.has(r.id)).map(r=>r.id);
+      const CHUNK=200;
+      for(let i=0;i<stale.length;i+=CHUNK){
+        const {error}=await sb.from('ghl_leads').delete().in('id',stale.slice(i,i+CHUNK));
+        if(error){console.error('Delete error:',error);break;}
+      }
+      if(stale.length) console.log(`Sync removed ${stale.length} stale leads not in GHL anymore.`);
     }
     await renderLeadsSection();
   }catch(e){
@@ -2826,6 +2848,11 @@ function searchLeads(q){
   refreshLeadRows();
 }
 
+function toggleFollowUpView(){
+  leadsShowFollowUp=!leadsShowFollowUp;
+  renderLeads(cachedLeads);
+}
+
 // Debounced search — only re-renders the table body & filter bar,
 // never the <input> itself, so focus/cursor is preserved while typing.
 let _leadSearchTimer=null;
@@ -2838,7 +2865,11 @@ function scheduleLeadSearch(){
 function computeLeads(){
   const q=leadsSearch.trim().toLowerCase();
   const all=cachedLeads||[];
-  const searched=q ? all.filter(l=>[l.name,l.email,l.phone,l.instagram].some(v=>v&&v.toLowerCase().includes(q))) : all;
+  let searched=q ? all.filter(l=>[l.name,l.email,l.phone,l.instagram].some(v=>v&&v.toLowerCase().includes(q))) : all;
+  if(leadsShowFollowUp){
+    const todayStr=new Date().toISOString().slice(0,10);
+    searched=searched.filter(l=>l.follow_up_date&&l.follow_up_date<=todayStr&&l.status!=='Closed'&&l.status!=='DQ');
+  }
   let leads=searched;
   if(leadsFilter==='mateja')        leads=searched.filter(l=>l.assigned_to==='mateja');
   else if(leadsFilter==='dusica')   leads=searched.filter(l=>l.assigned_to==='dusica');
@@ -2913,11 +2944,11 @@ function renderLeads(all){
   const total=leadCounts.qualified+leadCounts.disqualified+leadCounts.webinar_lead+leadCounts.lead_magnet;
   el.innerHTML=`<div style="width:100%">
 
-    ${fuToday.length?`<div class="fu-today-banner" style="margin-bottom:16px">
-      <div class="fu-today-banner-icon">🔔</div>
+    ${fuToday.length?`<div class="fu-today-banner ${leadsShowFollowUp?'active':''}" style="margin-bottom:16px;cursor:pointer" onclick="toggleFollowUpView()" title="${leadsShowFollowUp?'Klikni da prikažeš sve leadove':'Klikni da prikažeš samo follow-up'}">
+      <div class="fu-today-banner-icon">${leadsShowFollowUp?'✓':'🔔'}</div>
       <div class="fu-today-banner-text">
-        <div class="fu-today-banner-title">Follow-up danas</div>
-        <div class="fu-today-banner-sub">${fuToday.slice(0,3).map(l=>esc(l.name)).join(', ')}${fuToday.length>3?` +${fuToday.length-3}`:''}</div>
+        <div class="fu-today-banner-title">${leadsShowFollowUp?'Prikazujem samo follow-up danas':'Follow-up danas'}</div>
+        <div class="fu-today-banner-sub">${leadsShowFollowUp?'Klikni ponovo za sve leadove':`${fuToday.slice(0,3).map(l=>esc(l.name)).join(', ')}${fuToday.length>3?` +${fuToday.length-3}`:''}`}</div>
       </div>
       <div class="fu-today-banner-count">${fuToday.length}</div>
     </div>`:''}
