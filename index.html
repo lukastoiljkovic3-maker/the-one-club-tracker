@@ -369,6 +369,20 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .fu-today-banner:hover { background:rgba(234,179,8,.13); border-color:rgba(234,179,8,.4); }
 .fu-today-banner:active { transform: scale(.995); }
 .fu-today-banner.active { background:rgba(234,179,8,.18); border-color:rgba(234,179,8,.6); }
+.stale-banner {
+  display:flex; align-items:center; gap:12px; margin-bottom:14px;
+  padding:14px 18px; border-radius:12px;
+  background:rgba(244,63,94,.07); border:1px solid rgba(244,63,94,.25);
+  transition: background .15s, border-color .15s, transform .08s;
+}
+.stale-banner:hover { background:rgba(244,63,94,.12); border-color:rgba(244,63,94,.4); }
+.stale-banner:active { transform: scale(.995); }
+.stale-banner.active { background:rgba(244,63,94,.16); border-color:rgba(244,63,94,.6); }
+.stale-banner-icon { font-size:20px; flex-shrink:0; }
+.stale-banner-text { flex:1; }
+.stale-banner-title { font-size:13px; font-weight:800; color:var(--red); }
+.stale-banner-sub   { font-size:11px; color:var(--muted); margin-top:2px; }
+.stale-banner-count { font-size:28px; font-weight:900; color:var(--red); letter-spacing:-1px; }
 .fu-today-banner-icon { font-size:20px; flex-shrink:0; }
 .fu-today-banner-text { flex:1; }
 .fu-today-banner-title { font-size:13px; font-weight:800; color:var(--yellow); }
@@ -936,6 +950,33 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 @media (max-width: 600px) {
   .funnel-bar { height: 48px; padding: 0 14px; }
   .funnel-stage-count { font-size: 22px; }
+}
+
+/* ── MORNING BRIEFING ──────────────────── */
+.briefing-card {
+  background: linear-gradient(135deg, color-mix(in srgb, var(--bc) 12%, transparent), var(--s1));
+  border: 1px solid color-mix(in srgb, var(--bc) 30%, var(--b));
+  border-radius: 16px; padding: 18px 20px; margin-bottom: 16px;
+  position: relative; overflow: hidden;
+}
+.briefing-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.briefing-greet { font-size: 20px; font-weight: 900; letter-spacing: -.4px; }
+.briefing-sub { font-size: 11px; color: var(--muted); font-weight: 600; margin-top: 2px; letter-spacing: .3px; }
+.briefing-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+}
+.briefing-stat {
+  background: var(--s2); border: 1px solid var(--b); border-radius: 10px;
+  padding: 10px 12px;
+}
+.briefing-stat-val { font-size: 22px; font-weight: 900; letter-spacing: -.8px; line-height: 1; }
+.briefing-stat-lbl { font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: .5px; text-transform: uppercase; margin-top: 4px; }
+.briefing-bar { height: 4px; background: var(--s3); border-radius: 99px; overflow: hidden; margin-top: 14px; }
+.briefing-bar-fill { height: 100%; border-radius: 99px; transition: width .6s cubic-bezier(.16,1,.3,1); }
+@media (max-width: 720px) {
+  .briefing-stats { grid-template-columns: repeat(2, 1fr); }
+  .briefing-greet { font-size: 17px; }
+  .briefing-stat-val { font-size: 18px; }
 }
 
 /* ── BULK ACTIONS ──────────────────────── */
@@ -1795,6 +1836,7 @@ let leadsView    = 'list'; // 'list' | 'ads'
 let currentLeadId = null;
 let leadsSearch  = '';
 let leadsShowFollowUp = false;  // when true, only show leads needing follow-up today
+let leadsShowStale    = false;  // when true, only show stale (untouched 14d+) leads
 let cachedLeads  = [];
 let leadCounts   = { all: 0, qualified: 0, disqualified: 0, webinar_lead: 0, webinar_attended: 0, lead_magnet: 0 };
 let openNotes    = new Set();
@@ -2059,7 +2101,10 @@ function renderMain(data) {
   if (currentTab === 'team') el.innerHTML = renderTeam(data);
   else el.innerHTML = renderMember(data, currentTab);
   initChart(data);
-  if(currentTab==='mateja'||currentTab==='dusica') loadMemberFollowUps(currentTab);
+  if(currentTab==='mateja'||currentTab==='dusica'){
+    loadMemberFollowUps(currentTab);
+    populateBriefingCounts(currentTab);
+  }
 }
 
 function renderMember(data, member) {
@@ -2067,6 +2112,7 @@ function renderMember(data, member) {
   const color = member==='mateja'?'var(--mateja)':'var(--dusica)';
   return `
     <div data-role="main">
+      ${renderMorningBriefing(data, member, color)}
       ${renderCal(dm,member)}
       <div class="card mt">
         <div class="card-head">
@@ -2091,6 +2137,81 @@ function renderMember(data, member) {
         <div class="chart-wrap"><canvas id="barChart"></canvas></div>
       </div>
     </div>`;
+}
+
+/* ── DAILY MORNING BRIEFING ─────────────────────────────────────
+ * Personal greeting card shown at the top of each member's profile.
+ * Pulls today's follow-ups, yesterday's close count, MTD progress.
+ * Async-populates after initial render.
+ * ─────────────────────────────────────────────────────────────── */
+function renderMorningBriefing(data, member, color){
+  const greeting = (() => {
+    const h = new Date().getHours();
+    if (h < 12)  return 'Dobro jutro';
+    if (h < 18)  return 'Dobar dan';
+    return 'Dobro veče';
+  })();
+  const mtd = sum(gm(data, member, currentYear, currentMonth));
+  const t = getTargets();
+  const closeTarget = t.close;
+  const closePct = Math.min(100, Math.round((mtd.close / closeTarget) * 100));
+  // Yesterday's close from daily_entries
+  const y = new Date(); y.setDate(y.getDate()-1);
+  const yd = data?.[member]?.[y.getFullYear()]?.[y.getMonth()]?.[y.getDate()] || {};
+  const yClose = yd.close || 0;
+  return `
+    <div class="briefing-card" style="--bc:${color}">
+      <div class="briefing-row">
+        <div>
+          <div class="briefing-greet">${greeting}, <span style="color:${color}">${cap(member)}</span> 👋</div>
+          <div class="briefing-sub">Tvoj dan na jednom mestu</div>
+        </div>
+      </div>
+      <div class="briefing-stats">
+        <div class="briefing-stat">
+          <div class="briefing-stat-val" id="brief-fu-${member}">—</div>
+          <div class="briefing-stat-lbl">Follow-up danas</div>
+        </div>
+        <div class="briefing-stat">
+          <div class="briefing-stat-val" style="color:var(--green)">${yClose}</div>
+          <div class="briefing-stat-lbl">Juče zatvoreno</div>
+        </div>
+        <div class="briefing-stat">
+          <div class="briefing-stat-val" style="color:${color}">${mtd.close}<span style="font-size:14px;color:var(--muted);font-weight:600">/${closeTarget}</span></div>
+          <div class="briefing-stat-lbl">MTD close (${closePct}%)</div>
+        </div>
+        <div class="briefing-stat">
+          <div class="briefing-stat-val" id="brief-stale-${member}">—</div>
+          <div class="briefing-stat-lbl">Stale leadovi</div>
+        </div>
+      </div>
+      <div class="briefing-bar"><div class="briefing-bar-fill" style="width:${closePct}%;background:linear-gradient(90deg, ${color}, var(--green))"></div></div>
+    </div>
+  `;
+}
+
+async function populateBriefingCounts(member){
+  const todayStr = new Date().toISOString().slice(0,10);
+  const fourteenDaysAgo = new Date(); fourteenDaysAgo.setDate(fourteenDaysAgo.getDate()-14);
+  const fourteenDaysStr = fourteenDaysAgo.toISOString();
+
+  const [fuR, staleR] = await Promise.all([
+    sb.from('ghl_leads').select('id',{count:'exact',head:true})
+      .eq('assigned_to',member).eq('follow_up_date',todayStr)
+      .neq('status','Closed').neq('status','DQ'),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true})
+      .eq('assigned_to',member)
+      .neq('status','Closed').neq('status','DQ')
+      .lt('date_added', fourteenDaysStr)
+      .or(`follow_up_date.is.null,follow_up_date.lt.${fourteenDaysAgo.toISOString().slice(0,10)}`),
+  ]);
+  const fuEl    = document.getElementById('brief-fu-'+member);
+  const staleEl = document.getElementById('brief-stale-'+member);
+  if (fuEl)    fuEl.textContent = fuR.count || 0;
+  if (staleEl) {
+    staleEl.textContent = staleR.count || 0;
+    if ((staleR.count || 0) > 0) staleEl.style.color = 'var(--red)';
+  }
 }
 
 async function loadMemberFollowUps(member){
@@ -3367,7 +3488,9 @@ async function syncLeadsFromGHL(){
       if(stale.length) console.log(`Sync removed ${stale.length} stale leads not in GHL anymore.`);
     }
     await renderLeadsSection();
-    // After GHL sync, reconcile sheet → CRM Closed status
+    // After GHL sync: auto-distribute unassigned leads round-robin
+    autoAssignUnassigned().then(r => showRoundRobinToast(r));
+    // And reconcile sheet → CRM Closed status
     syncClosedFromSheet({force:true}).then(r => showSheetSyncToast(r));
   }catch(e){
     console.error('GHL sync error:',e);
@@ -3504,6 +3627,13 @@ function searchLeads(q){
 
 function toggleFollowUpView(){
   leadsShowFollowUp=!leadsShowFollowUp;
+  if(leadsShowFollowUp) leadsShowStale=false;
+  renderLeads(cachedLeads);
+}
+
+function toggleStaleView(){
+  leadsShowStale=!leadsShowStale;
+  if(leadsShowStale) leadsShowFollowUp=false;
   renderLeads(cachedLeads);
 }
 
@@ -3523,6 +3653,19 @@ function computeLeads(){
   if(leadsShowFollowUp){
     const todayStr=new Date().toISOString().slice(0,10);
     searched=searched.filter(l=>l.follow_up_date===todayStr&&l.status!=='Closed'&&l.status!=='DQ');
+  }
+  if(leadsShowStale){
+    // Stale = open AND created >14d ago AND no upcoming follow-up
+    const fourteenDaysAgo=new Date(); fourteenDaysAgo.setDate(fourteenDaysAgo.getDate()-14);
+    const cutoffIso=fourteenDaysAgo.toISOString();
+    const cutoffDay=fourteenDaysAgo.toISOString().slice(0,10);
+    searched=searched.filter(l=>{
+      if (l.status==='Closed'||l.status==='DQ') return false;
+      if (l.date_added && l.date_added >= cutoffIso) return false;
+      // If they have a future or recent follow-up, not stale
+      if (l.follow_up_date && l.follow_up_date >= cutoffDay) return false;
+      return true;
+    });
   }
   let leads=searched;
   if(leadsFilter==='mateja')        leads=searched.filter(l=>l.assigned_to==='mateja');
@@ -3714,16 +3857,36 @@ function renderLeads(all){
 
   const rows=buildLeadRows(leads);
 
+  // Compute stale-lead count for the banner
+  const fourteenDaysAgo=new Date(); fourteenDaysAgo.setDate(fourteenDaysAgo.getDate()-14);
+  const cutoffIso=fourteenDaysAgo.toISOString();
+  const cutoffDay=fourteenDaysAgo.toISOString().slice(0,10);
+  const staleLeads=(cachedLeads||[]).filter(l=>{
+    if (l.status==='Closed'||l.status==='DQ') return false;
+    if (l.date_added && l.date_added >= cutoffIso) return false;
+    if (l.follow_up_date && l.follow_up_date >= cutoffDay) return false;
+    return true;
+  });
+
   const total=leadCounts.all||0;
   el.innerHTML=`<div style="width:100%">
 
-    ${fuToday.length?`<div class="fu-today-banner ${leadsShowFollowUp?'active':''}" style="margin-bottom:16px;cursor:pointer" onclick="toggleFollowUpView()" title="${leadsShowFollowUp?'Klikni da prikažeš sve leadove':'Klikni da prikažeš samo follow-up'}">
+    ${fuToday.length?`<div class="fu-today-banner ${leadsShowFollowUp?'active':''}" style="margin-bottom:10px;cursor:pointer" onclick="toggleFollowUpView()" title="${leadsShowFollowUp?'Klikni da prikažeš sve leadove':'Klikni da prikažeš samo follow-up'}">
       <div class="fu-today-banner-icon">${leadsShowFollowUp?'✓':'🔔'}</div>
       <div class="fu-today-banner-text">
         <div class="fu-today-banner-title">${leadsShowFollowUp?'Prikazujem samo follow-up danas':'Follow-up danas'}</div>
         <div class="fu-today-banner-sub">${leadsShowFollowUp?'Klikni ponovo za sve leadove':`${fuToday.slice(0,3).map(l=>esc(l.name)).join(', ')}${fuToday.length>3?` +${fuToday.length-3}`:''}`}</div>
       </div>
       <div class="fu-today-banner-count">${fuToday.length}</div>
+    </div>`:''}
+
+    ${staleLeads.length?`<div class="stale-banner ${leadsShowStale?'active':''}" style="margin-bottom:16px;cursor:pointer" onclick="toggleStaleView()" title="${leadsShowStale?'Klikni da prikažeš sve leadove':'Klikni da prikažeš samo stale leadove'}">
+      <div class="stale-banner-icon">${leadsShowStale?'✓':'🥶'}</div>
+      <div class="stale-banner-text">
+        <div class="stale-banner-title">${leadsShowStale?'Prikazujem samo stale leadove':'Stale leadovi · netaknuti 14+ dana'}</div>
+        <div class="stale-banner-sub">${leadsShowStale?'Klikni ponovo za sve leadove':'Reaktiviraj ih ili obeleži DQ'}</div>
+      </div>
+      <div class="stale-banner-count">${staleLeads.length}</div>
     </div>`:''}
 
     <div class="leads-stat-bar">
@@ -4196,6 +4359,69 @@ async function syncClosedFromSheet(opts = {}){
     _sheetSyncRunning = false;
     _sheetSyncLastRun = Date.now();
   }
+}
+
+/* ─────────────────── AUTO ROUND-ROBIN ASSIGNMENT ──────────────────
+ * Fairly distributes unassigned tracker-relevant leads between
+ * Mateja and Dušica. Whoever has fewer open leads (status not in
+ * Closed/DQ) gets the next one. Activity log records each.
+ * ─────────────────────────────────────────────────────────────── */
+async function autoAssignUnassigned(){
+  // Get current workload counts (open leads per rep)
+  const [mR, dR] = await Promise.all([
+    sb.from('ghl_leads').select('id',{count:'exact',head:true})
+      .eq('assigned_to','mateja').neq('status','Closed').neq('status','DQ'),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true})
+      .eq('assigned_to','dusica').neq('status','Closed').neq('status','DQ'),
+  ]);
+  let mateja = mR.count || 0;
+  let dusica = dR.count || 0;
+
+  // Fetch unassigned, open, tracker-relevant leads
+  const { data, error } = await sb.from('ghl_leads')
+    .select('id,date_added,tags,status')
+    .is('assigned_to', null)
+    .neq('status','Closed').neq('status','DQ')
+    .overlaps('tags', ['qualified','qualified-webinar','webinar-lead','prisustvovao-webinaru'])
+    .order('date_added', { ascending: true })
+    .limit(500);
+  if (error || !data || !data.length) return { assigned: 0 };
+
+  let assignedM = 0, assignedD = 0;
+  for (const lead of data) {
+    const target = mateja <= dusica ? 'mateja' : 'dusica';
+    const { error: upErr } = await sb.from('ghl_leads').update({ assigned_to: target }).eq('id', lead.id);
+    if (upErr) continue;
+    logActivity(lead.id, 'assign', null, target);
+    if (target === 'mateja') { mateja++; assignedM++; } else { dusica++; assignedD++; }
+    const cached = (cachedLeads||[]).find(l => l.id === lead.id);
+    if (cached) cached.assigned_to = target;
+  }
+  return { assigned: assignedM + assignedD, mateja: assignedM, dusica: assignedD };
+}
+
+function showRoundRobinToast(r){
+  if (!r || !r.assigned) return;
+  let wrap = document.getElementById('stl-toast-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'stl-toast-wrap'; wrap.className = 'stl-toast-wrap';
+    document.body.appendChild(wrap);
+  }
+  const toast = document.createElement('div');
+  toast.className = 'stl-toast';
+  toast.innerHTML = `
+    <div class="stl-toast-icon">🎯</div>
+    <div class="stl-toast-body">
+      <div class="stl-toast-title">Auto-dodela</div>
+      <div class="stl-toast-name">${r.assigned} leadova raspodeljeno</div>
+      <div class="stl-toast-meta">Mateja: ${r.mateja||0} · Dušica: ${r.dusica||0}</div>
+    </div>
+    <div class="stl-toast-close">×</div>
+  `;
+  const dismiss=()=>{toast.classList.add('leaving');setTimeout(()=>toast.remove(),250);};
+  toast.querySelector('.stl-toast-close').onclick=(e)=>{e.stopPropagation();dismiss();};
+  wrap.appendChild(toast); setTimeout(dismiss, 9000);
 }
 
 // In-app toast for sync result (shares the .stl-toast style)
