@@ -1590,7 +1590,7 @@ let currentLeadId = null;
 let leadsSearch  = '';
 let leadsShowFollowUp = false;  // when true, only show leads needing follow-up today
 let cachedLeads  = [];
-let leadCounts   = { qualified: 0, disqualified: 0, webinar_lead: 0, webinar_attended: 0, lead_magnet: 0 };
+let leadCounts   = { all: 0, qualified: 0, disqualified: 0, webinar_lead: 0, webinar_attended: 0, lead_magnet: 0 };
 let openNotes    = new Set();
 
 // Monthly targets (persisted in localStorage)
@@ -2643,14 +2643,15 @@ async function loadLeads(lead_type){
 }
 
 async function loadLeadCounts(){
-  const [qR,dqR,wR,waR,lR]=await Promise.all([
+  const [allR,qR,dqR,wR,waR,lR]=await Promise.all([
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['qualified','qualified-webinar']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['dq','disqualified-webinar']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['webinar-lead']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['prisustvovao-webinaru']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['lead-magnet']),
   ]);
-  return{qualified:qR.count||0,disqualified:dqR.count||0,webinar_lead:wR.count||0,webinar_attended:waR.count||0,lead_magnet:lR.count||0};
+  return{all:allR.count||0,qualified:qR.count||0,disqualified:dqR.count||0,webinar_lead:wR.count||0,webinar_attended:waR.count||0,lead_magnet:lR.count||0};
 }
 
 function mapContact(c, lead_type){
@@ -2941,7 +2942,7 @@ function renderLeads(all){
 
   const rows=buildLeadRows(leads);
 
-  const total=leadCounts.qualified+leadCounts.disqualified+leadCounts.webinar_lead+leadCounts.lead_magnet;
+  const total=leadCounts.all||0;
   el.innerHTML=`<div style="width:100%">
 
     ${fuToday.length?`<div class="fu-today-banner ${leadsShowFollowUp?'active':''}" style="margin-bottom:16px;cursor:pointer" onclick="toggleFollowUpView()" title="${leadsShowFollowUp?'Klikni da prikažeš sve leadove':'Klikni da prikažeš samo follow-up'}">
