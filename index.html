@@ -900,6 +900,51 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   .ms-closer-val { font-size:26px; }
 }
 
+/* ── BULK ACTIONS ──────────────────────── */
+.ltr-chk-cell { width: 36px; padding-left: 14px !important; padding-right: 4px !important; }
+.ltr-chk {
+  width: 16px; height: 16px; cursor: pointer; accent-color: var(--green);
+  margin: 0; vertical-align: middle;
+}
+tr.ltr-selected { background: rgba(34,197,94,.06); }
+tr.ltr-selected:hover { background: rgba(34,197,94,.10); }
+
+.bulk-bar {
+  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 30px);
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  background: var(--s1); border: 1px solid var(--b2);
+  padding: 10px 14px; border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.04);
+  z-index: 9000; opacity: 0; pointer-events: none;
+  transition: opacity .18s, transform .18s;
+  max-width: calc(100vw - 32px);
+}
+.bulk-bar.show { opacity: 1; pointer-events: auto; transform: translate(-50%, 0); }
+.bulk-count { font-size: 12px; font-weight: 800; color: var(--green); padding: 0 4px; letter-spacing: .3px; }
+.bulk-sep { width: 1px; height: 22px; background: var(--b); }
+.bulk-group { display: flex; align-items: center; gap: 6px; }
+.bulk-lbl   { font-size: 10px; font-weight: 800; letter-spacing: 1px; text-transform: uppercase; color: var(--muted2); padding-right: 2px; }
+.bulk-btn {
+  background: var(--s2); border: 1px solid var(--b); color: var(--text);
+  padding: 7px 11px; font-size: 12px; font-weight: 700; border-radius: 8px; cursor: pointer;
+  transition: all .12s; font-family: inherit;
+}
+.bulk-btn:hover { border-color: var(--b2); transform: translateY(-1px); }
+.bulk-btn.bulk-m { color: var(--mateja); border-color: rgba(168,85,247,.35); }
+.bulk-btn.bulk-d { color: var(--dusica); border-color: rgba(249,115,22,.35); }
+.bulk-btn.bulk-dq { color: var(--red); border-color: rgba(244,63,94,.35); }
+.bulk-btn.bulk-clear { color: var(--muted); }
+.bulk-date {
+  background: var(--s2); border: 1px solid var(--b); color: var(--text);
+  padding: 6px 8px; font-size: 12px; border-radius: 8px; font-family: inherit;
+}
+@media (max-width: 768px) {
+  .bulk-bar { left: 8px; right: 8px; bottom: 76px; transform: none; flex-direction: column; align-items: stretch; max-width: none; }
+  .bulk-bar.show { transform: none; }
+  .bulk-sep { display: none; }
+  .bulk-group { justify-content: flex-start; flex-wrap: wrap; }
+}
+
 /* ── LEAD ACTIVITY TIMELINE ────────────── */
 .lat-host { display:flex; flex-direction:column; gap:0; max-height:340px; overflow-y:auto; }
 .lat-row {
@@ -1716,6 +1761,7 @@ let cachedLeads  = [];
 let leadCounts   = { all: 0, qualified: 0, disqualified: 0, webinar_lead: 0, webinar_attended: 0, lead_magnet: 0 };
 let openNotes    = new Set();
 let currentUserEmail = null;  // Set after auth; used as actor for activity log
+let selectedLeadIds = new Set();  // Currently checked leads for bulk actions
 
 // Monthly targets (persisted in localStorage)
 const DEFAULT_TARGETS = { calls: 300, close: 20 };
@@ -3218,6 +3264,8 @@ async function syncLeadsFromGHL(){
 async function setLeadsSubTab(tab){
   leadsSubTab=tab;
   leadsFilter='all';
+  selectedLeadIds.clear();
+  renderBulkBar();
   await renderLeadsSection();
 }
 
@@ -3382,7 +3430,11 @@ function buildLeadRows(leads){
     const meta=[c.phone,c.instagram?`@${c.instagram.replace('@','')}`:''].filter(Boolean).join(' · ');
     const stOpts=['Novi','Follow Up','Closed','DQ'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('');
     let fuCls=''; if(c.follow_up_date){fuCls=c.follow_up_date===todayStr?'fu-today':c.follow_up_date<todayStr?'fu-overdue':'';}
-    return `<tr onclick="openLeadDetail('${esc(c.id)}')">
+    const checked=selectedLeadIds.has(c.id)?'checked':'';
+    return `<tr class="${checked?'ltr-selected':''}" onclick="openLeadDetail('${esc(c.id)}')">
+      <td class="ltr-chk-cell" onclick="event.stopPropagation()">
+        <input type="checkbox" class="ltr-chk" ${checked} onchange="toggleLeadSelection('${esc(c.id)}',this.checked)" />
+      </td>
       <td><div class="ltr-contact">
         <div class="ltr-av ${avCls}">${initials}</div>
         <div><div class="ltr-name">${esc(c.name)}${contactActions(c)}</div>${meta?`<div class="ltr-sub">${esc(meta)}</div>`:''}</div>
@@ -3402,7 +3454,122 @@ function buildLeadRows(leads){
       </td>
       <td><span class="ltr-arrow">›</span></td>
     </tr>`;
-  }).join('')||`<tr><td colspan="6" style="padding:48px 20px;text-align:center;color:var(--muted)"><div style="font-size:24px;margin-bottom:8px">🎯</div><div style="font-size:13px;font-weight:700">Nema leadova</div></td></tr>`;
+  }).join('')||`<tr><td colspan="7" style="padding:48px 20px;text-align:center;color:var(--muted)"><div style="font-size:24px;margin-bottom:8px">🎯</div><div style="font-size:13px;font-weight:700">Nema leadova</div></td></tr>`;
+}
+
+/* ── BULK ACTIONS ─────────────────────────────────────────────── */
+function toggleLeadSelection(id, checked){
+  if (checked) selectedLeadIds.add(id);
+  else selectedLeadIds.delete(id);
+  // Toggle row styling without full re-render
+  document.querySelectorAll('#leadsBody tr').forEach(tr => {
+    const chk = tr.querySelector('.ltr-chk');
+    if (chk) tr.classList.toggle('ltr-selected', chk.checked);
+  });
+  renderBulkBar();
+}
+
+function toggleSelectAll(checked){
+  const {leads} = computeLeads();
+  if (checked) leads.forEach(l => selectedLeadIds.add(l.id));
+  else leads.forEach(l => selectedLeadIds.delete(l.id));
+  refreshLeadRows();
+  renderBulkBar();
+}
+
+function clearLeadSelection(){
+  selectedLeadIds.clear();
+  refreshLeadRows();
+  renderBulkBar();
+}
+
+function renderBulkBar(){
+  let bar = document.getElementById('bulkBar');
+  if (!selectedLeadIds.size) {
+    if (bar) bar.classList.remove('show');
+    return;
+  }
+  if (!bar) {
+    bar = document.createElement('div');
+    bar.id = 'bulkBar';
+    bar.className = 'bulk-bar';
+    document.body.appendChild(bar);
+  }
+  bar.innerHTML = `
+    <div class="bulk-count">${selectedLeadIds.size} selektovano</div>
+    <div class="bulk-sep"></div>
+    <div class="bulk-group">
+      <span class="bulk-lbl">Dodeli</span>
+      <button class="bulk-btn bulk-m" onclick="bulkAssign('mateja')">Mateja</button>
+      <button class="bulk-btn bulk-d" onclick="bulkAssign('dusica')">Dušica</button>
+      <button class="bulk-btn" onclick="bulkAssign(null)">Niko</button>
+    </div>
+    <div class="bulk-sep"></div>
+    <div class="bulk-group">
+      <span class="bulk-lbl">Status</span>
+      <button class="bulk-btn" onclick="bulkStatus('Novi')">Novi</button>
+      <button class="bulk-btn" onclick="bulkStatus('Follow Up')">Follow Up</button>
+      <button class="bulk-btn" onclick="bulkStatus('Closed')">Closed</button>
+      <button class="bulk-btn bulk-dq" onclick="bulkStatus('DQ')">DQ</button>
+    </div>
+    <div class="bulk-sep"></div>
+    <div class="bulk-group">
+      <span class="bulk-lbl">Follow Up</span>
+      <input type="date" class="bulk-date" id="bulkDateInput" />
+      <button class="bulk-btn" onclick="bulkFollowUp(document.getElementById('bulkDateInput').value)">Postavi</button>
+      <button class="bulk-btn" onclick="bulkFollowUp(null)">Obriši</button>
+    </div>
+    <div class="bulk-sep"></div>
+    <button class="bulk-btn bulk-clear" onclick="clearLeadSelection()">Otkaži</button>
+  `;
+  bar.classList.add('show');
+}
+
+async function bulkAssign(member){
+  const ids = [...selectedLeadIds];
+  if (!ids.length) return;
+  const { error } = await sb.from('ghl_leads').update({ assigned_to: member }).in('id', ids);
+  if (error) { alert('Greška: '+error.message); return; }
+  // Log each
+  ids.forEach(id => {
+    const lead = cachedLeads.find(l=>l.id===id);
+    if (lead) {
+      logActivity(id, 'assign', lead.assigned_to||null, member);
+      lead.assigned_to = member;
+    }
+  });
+  refreshLeadRows();
+}
+
+async function bulkStatus(status){
+  const ids = [...selectedLeadIds];
+  if (!ids.length) return;
+  const { error } = await sb.from('ghl_leads').update({ status }).in('id', ids);
+  if (error) { alert('Greška: '+error.message); return; }
+  ids.forEach(id => {
+    const lead = cachedLeads.find(l=>l.id===id);
+    if (lead) {
+      logActivity(id, 'status', lead.status||'Novi', status);
+      lead.status = status;
+    }
+  });
+  refreshLeadRows();
+}
+
+async function bulkFollowUp(date){
+  const ids = [...selectedLeadIds];
+  if (!ids.length) return;
+  const val = date || null;
+  const { error } = await sb.from('ghl_leads').update({ follow_up_date: val }).in('id', ids);
+  if (error) { alert('Greška: '+error.message); return; }
+  ids.forEach(id => {
+    const lead = cachedLeads.find(l=>l.id===id);
+    if (lead) {
+      logActivity(id, 'followup', lead.follow_up_date||null, val);
+      lead.follow_up_date = val;
+    }
+  });
+  refreshLeadRows();
 }
 
 // Updates ONLY the table body + filter-bar counts (preserves search focus).
@@ -3486,6 +3653,7 @@ function renderLeads(all){
     <div class="leads-tbl-wrap">
       <table class="leads-tbl">
         <thead><tr>
+          <th class="ltr-chk-cell"><input type="checkbox" class="ltr-chk" id="selectAllChk" onchange="toggleSelectAll(this.checked)" title="Selektuj sve" /></th>
           <th>Kontakt</th>
           <th>Tip</th>
           <th class="col-mob">Status</th>
