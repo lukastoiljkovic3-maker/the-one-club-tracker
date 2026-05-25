@@ -2702,6 +2702,8 @@ async function renderMetricsTab(){
   el.innerHTML='<div class="empty"><div class="empty-icon" style="font-size:20px">⏳</div><div class="empty-text">Učitavam...</div></div>';
 
   const [data, sheetRows] = await Promise.all([loadData(), fetchSheetData().catch(()=>[])]);
+  // Background: reconcile closed deals from sheet → CRM
+  syncClosedFromSheet().then(r => showSheetSyncToast(r));
 
   const { sM, sD } = getStatsForPeriod(data, metricsPeriod);
 
@@ -3365,6 +3367,8 @@ async function syncLeadsFromGHL(){
       if(stale.length) console.log(`Sync removed ${stale.length} stale leads not in GHL anymore.`);
     }
     await renderLeadsSection();
+    // After GHL sync, reconcile sheet → CRM Closed status
+    syncClosedFromSheet({force:true}).then(r => showSheetSyncToast(r));
   }catch(e){
     console.error('GHL sync error:',e);
     const msg='Ne mogu da sinhronizujem sa GHL: '+e.message;
@@ -4078,6 +4082,149 @@ async function updateLeadDeal(id,deal){
 /* ── GOOGLE SHEETS REVENUE ── */
 const SHEET_ID='1oDEq47UJtmHIaXUDtwFWOeU5huWIz69PsnjC4YcC0O8';
 
+/* ─────────────────── SHEET → CRM CLOSED SYNC ──────────────────────
+ * Reads the Google Sheet (source of truth for closed deals) and
+ * marks each matching ghl_leads row as status='Closed'. Match by
+ * email first, then by exact (case-insensitive) name fallback.
+ * Bonus: if the sheet row has a closer, assign the lead to that
+ * rep if it's still unassigned. Runs silently every time the
+ * Metrics tab or revenue section is loaded.
+ * ─────────────────────────────────────────────────────────────── */
+const CLOSER_TO_MEMBER = {
+  'mateja': 'mateja',
+  'dusica': 'dusica',
+  'dušica': 'dusica',
+};
+function _normLow(s){ return (s||'').toString().trim().toLowerCase(); }
+function _normName(s){
+  return _normLow(s).normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/\s+/g,' ');
+}
+function _challengeToDeal(amount){
+  const m = { 10000:'funded_10k', 25000:'funded_25k', 50000:'funded_50k',
+              100000:'funded_100k', 200000:'funded_200k', 400000:'funded_400k' };
+  return m[Number(amount)] || null;
+}
+
+let _sheetSyncRunning = false;
+let _sheetSyncLastRun = 0;
+
+async function syncClosedFromSheet(opts = {}){
+  // Throttle: don't run more than once every 30s unless forced
+  if (_sheetSyncRunning) return null;
+  if (!opts.force && Date.now() - _sheetSyncLastRun < 30000) return null;
+  _sheetSyncRunning = true;
+  try {
+    let sheet;
+    try { sheet = await fetchSheetData(); }
+    catch (e) { return { error: 'Ne mogu da učitam Sheet: '+e.message }; }
+    if (!sheet || !sheet.length) return { matched: 0, updated: 0 };
+
+    const emails = [...new Set(sheet.map(r => _normLow(r.email)).filter(Boolean))];
+    const names  = [...new Set(sheet.map(r => r.name).filter(Boolean))];
+
+    // Fetch potential matches by email + by exact name
+    const fetched = [];
+    if (emails.length) {
+      const { data } = await sb.from('ghl_leads')
+        .select('id,name,email,status,deal,assigned_to')
+        .in('email', emails);
+      if (data) fetched.push(...data);
+    }
+    if (names.length) {
+      const { data } = await sb.from('ghl_leads')
+        .select('id,name,email,status,deal,assigned_to')
+        .in('name', names);
+      if (data) fetched.push(...data);
+    }
+    // Dedupe by id
+    const byId = new Map();
+    fetched.forEach(c => byId.set(c.id, c));
+    const candidates = [...byId.values()];
+
+    // Build lookup indexes
+    const byEmail = new Map();
+    const byName  = new Map();
+    candidates.forEach(c => {
+      if (c.email) byEmail.set(_normLow(c.email), c);
+      if (c.name)  byName.set(_normName(c.name), c);
+    });
+
+    const updates = [];
+    let matchCount = 0;
+    for (const row of sheet) {
+      const e = _normLow(row.email);
+      const n = _normName(row.name);
+      const match = (e && byEmail.get(e)) || (n && byName.get(n));
+      if (!match) continue;
+      matchCount++;
+      const patch = {};
+      if (match.status !== 'Closed') patch.status = 'Closed';
+      const dealKey = _challengeToDeal(row.challenge);
+      if (dealKey && !match.deal) patch.deal = dealKey;
+      const closer = CLOSER_TO_MEMBER[_normLow(row.closer)];
+      if (closer && !match.assigned_to) patch.assigned_to = closer;
+      if (!Object.keys(patch).length) continue;
+      updates.push({
+        id: match.id, patch,
+        oldStatus: match.status || 'Novi',
+        oldDeal:   match.deal || null,
+        oldAssign: match.assigned_to || null,
+      });
+    }
+
+    if (!updates.length) return { matched: matchCount, updated: 0 };
+
+    // Apply updates + activity log entries
+    for (const u of updates) {
+      const { error } = await sb.from('ghl_leads').update(u.patch).eq('id', u.id);
+      if (error) { console.error('Sheet→CRM update error:', error); continue; }
+      if (u.patch.status && u.patch.status !== u.oldStatus) {
+        logActivity(u.id, 'status', u.oldStatus, u.patch.status);
+      }
+      if (u.patch.deal && u.patch.deal !== u.oldDeal) {
+        logActivity(u.id, 'deal', u.oldDeal, u.patch.deal);
+      }
+      if (u.patch.assigned_to && u.patch.assigned_to !== u.oldAssign) {
+        logActivity(u.id, 'assign', u.oldAssign, u.patch.assigned_to);
+      }
+      // Refresh cached lead if loaded
+      const cached = (cachedLeads||[]).find(l => l.id === u.id);
+      if (cached) Object.assign(cached, u.patch);
+    }
+    return { matched: matchCount, updated: updates.length };
+  } finally {
+    _sheetSyncRunning = false;
+    _sheetSyncLastRun = Date.now();
+  }
+}
+
+// In-app toast for sync result (shares the .stl-toast style)
+function showSheetSyncToast(result){
+  if (!result || !result.updated) return;
+  let wrap = document.getElementById('stl-toast-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'stl-toast-wrap';
+    wrap.className = 'stl-toast-wrap';
+    document.body.appendChild(wrap);
+  }
+  const toast = document.createElement('div');
+  toast.className = 'stl-toast';
+  toast.innerHTML = `
+    <div class="stl-toast-icon">✅</div>
+    <div class="stl-toast-body">
+      <div class="stl-toast-title">Sheet sinhronizovan</div>
+      <div class="stl-toast-name">${result.updated} leadova označeno kao Closed</div>
+      <div class="stl-toast-meta">${result.matched} ukupno upareno</div>
+    </div>
+    <div class="stl-toast-close" title="Zatvori">×</div>
+  `;
+  const dismiss = () => { toast.classList.add('leaving'); setTimeout(()=>toast.remove(),250); };
+  toast.querySelector('.stl-toast-close').onclick = (e) => { e.stopPropagation(); dismiss(); };
+  wrap.appendChild(toast);
+  setTimeout(dismiss, 8000);
+}
+
 async function fetchSheetData(){
   const url=`https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json`;
   const res=await fetch(url);
@@ -4107,6 +4254,8 @@ async function loadRevenue(){
   try{
     const rows=await fetchSheetData();
     renderRevenue(rows,sec);
+    // Background reconcile sheet → CRM Closed status
+    syncClosedFromSheet().then(r => showSheetSyncToast(r));
   }catch(e){
     sec.innerHTML=`<div class="card"><div class="card-body" style="color:var(--red);font-size:12px;font-weight:600">Greška pri učitavanju: ${e.message}</div></div>`;
   }
