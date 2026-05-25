@@ -900,6 +900,25 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   .ms-closer-val { font-size:26px; }
 }
 
+/* ── LEAD ACTIVITY TIMELINE ────────────── */
+.lat-host { display:flex; flex-direction:column; gap:0; max-height:340px; overflow-y:auto; }
+.lat-row {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 10px 0; border-top: 1px solid var(--b);
+}
+.lat-row:first-child { border-top: none; padding-top: 4px; }
+.lat-icon {
+  font-size: 14px; flex-shrink: 0;
+  width: 26px; height: 26px; border-radius: 8px;
+  background: var(--s2); display: grid; place-items: center;
+}
+.lat-body { flex:1; min-width:0; }
+.lat-line { font-size: 12px; line-height: 1.45; color: var(--muted); }
+.lat-actor { color: var(--text); font-weight: 700; }
+.lat-action { color: var(--muted2); font-weight: 600; }
+.lat-desc { color: var(--text); }
+.lat-time { font-size: 10px; color: var(--muted2); font-weight: 600; margin-top: 2px; letter-spacing: .3px; }
+
 /* ── CLICK-TO-CONTACT BIG BUTTONS (detail panel) ── */
 .ldp-contact-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .ldp-ca-btn {
@@ -1696,6 +1715,7 @@ let leadsShowFollowUp = false;  // when true, only show leads needing follow-up 
 let cachedLeads  = [];
 let leadCounts   = { all: 0, qualified: 0, disqualified: 0, webinar_lead: 0, webinar_attended: 0, lead_magnet: 0 };
 let openNotes    = new Set();
+let currentUserEmail = null;  // Set after auth; used as actor for activity log
 
 // Monthly targets (persisted in localStorage)
 const DEFAULT_TARGETS = { calls: 300, close: 20 };
@@ -1801,6 +1821,7 @@ async function signOut() {
     if (session?.user) {
       hideAuthGate();
       setHeaderUser(session.user);
+      currentUserEmail = session.user.email || null;
       stlStart();
     } else {
       showAuthGate();
@@ -2815,6 +2836,105 @@ async function loadLeads(lead_type){
   return data||[];
 }
 
+/* ─────────────────── ACTIVITY LOG ─────────────────────────────────
+ * Every status/assign/followup/deal/note change is persisted into the
+ * `lead_activities` Supabase table so we have an audit trail per lead.
+ * Renders as a timeline inside the lead detail panel.
+ *
+ * Requires this Supabase SQL run once:
+ *   create table if not exists lead_activities (
+ *     id uuid primary key default gen_random_uuid(),
+ *     lead_id text not null,
+ *     actor_email text,
+ *     action_type text not null,
+ *     old_value text,
+ *     new_value text,
+ *     created_at timestamptz not null default now()
+ *   );
+ *   create index if not exists lead_activities_lead_id_idx
+ *     on lead_activities (lead_id, created_at desc);
+ * ─────────────────────────────────────────────────────────────── */
+async function logActivity(leadId, actionType, oldValue, newValue){
+  if (!leadId || !actionType) return;
+  // Skip no-ops
+  const ov = oldValue==null ? null : String(oldValue);
+  const nv = newValue==null ? null : String(newValue);
+  if (ov === nv) return;
+  try {
+    await sb.from('lead_activities').insert({
+      lead_id: leadId,
+      actor_email: currentUserEmail,
+      action_type: actionType,
+      old_value: ov,
+      new_value: nv,
+    });
+  } catch (e) { /* non-fatal */ }
+}
+
+async function loadLeadActivities(leadId, limit = 25){
+  const { data, error } = await sb.from('lead_activities')
+    .select('*').eq('lead_id', leadId)
+    .order('created_at', { ascending: false }).limit(limit);
+  if (error) return [];
+  return data || [];
+}
+
+function formatActivity(a){
+  const map = {
+    status:    { label: 'Status',    icon: '🔄' },
+    assign:    { label: 'Dodeljen',  icon: '👤' },
+    followup:  { label: 'Follow Up', icon: '📅' },
+    deal:      { label: 'Paket',     icon: '💰' },
+    note:      { label: 'Beleška',   icon: '📝' },
+    created:   { label: 'Kreiran',   icon: '✨' },
+  };
+  const m = map[a.action_type] || { label: a.action_type, icon: '•' };
+  const fmt = v => v==null||v==='' ? '∅' : v.length>40 ? v.slice(0,40)+'…' : v;
+  let desc;
+  if (a.action_type === 'note') {
+    desc = a.new_value ? `napisao: "${fmt(a.new_value)}"` : 'obrisao belešku';
+  } else if (a.old_value && a.new_value) {
+    desc = `${fmt(a.old_value)} → ${fmt(a.new_value)}`;
+  } else if (a.new_value) {
+    desc = `postavljeno: ${fmt(a.new_value)}`;
+  } else {
+    desc = `uklonjeno: ${fmt(a.old_value)}`;
+  }
+  return { icon: m.icon, label: m.label, desc };
+}
+
+function timeAgoSr(iso){
+  const t = new Date(iso).getTime();
+  const diff = (Date.now() - t) / 1000;
+  if (diff < 60) return 'sada';
+  if (diff < 3600) return `pre ${Math.floor(diff/60)}min`;
+  if (diff < 86400) return `pre ${Math.floor(diff/3600)}h`;
+  if (diff < 86400*7) return `pre ${Math.floor(diff/86400)}d`;
+  return new Date(iso).toLocaleDateString('sr-RS', { day:'numeric', month:'short', year:'2-digit' });
+}
+
+async function renderLeadActivityInto(elId, leadId){
+  const host = document.getElementById(elId);
+  if (!host) return;
+  host.innerHTML = `<div style="text-align:center;padding:18px;color:var(--muted);font-size:12px">⏳ Učitavam...</div>`;
+  const items = await loadLeadActivities(leadId, 25);
+  if (!items.length) {
+    host.innerHTML = `<div style="text-align:center;padding:18px;color:var(--muted);font-size:12px">Nema zabeleženih izmena. Sve buduće akcije će se logovati ovde.</div>`;
+    return;
+  }
+  host.innerHTML = items.map(a => {
+    const f = formatActivity(a);
+    const who = a.actor_email ? a.actor_email.split('@')[0] : 'sistem';
+    return `<div class="lat-row">
+      <div class="lat-icon">${f.icon}</div>
+      <div class="lat-body">
+        <div class="lat-line"><span class="lat-actor">${esc(who)}</span> <span class="lat-action">${esc(f.label.toLowerCase())}</span> <span class="lat-desc">${esc(f.desc)}</span></div>
+        <div class="lat-time">${timeAgoSr(a.created_at)}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 /* ─────────────────── CLICK-TO-CONTACT HELPERS ─────────────────────
  * Strip the phone to digits (+ allowed). Build wa.me links with a
  * pre-filled greeting and tel: links for the native dialer.
@@ -3461,9 +3581,14 @@ function openLeadDetail(id){
       <div class="ldp-sec-lbl">Beleška</div>
       <textarea class="lc-note-input" style="width:100%;min-height:90px" placeholder="Dodaj belešku…" onblur="saveLeadNote('${esc(c.id)}',this.value)">${esc(c.notes||'')}</textarea>
     </div>
+    <div>
+      <div class="ldp-sec-lbl">Istorija aktivnosti</div>
+      <div id="ldpActivityList" class="lat-host"></div>
+    </div>
     <div style="font-size:10px;color:var(--muted);padding-top:4px">Dodat: ${c.date_added?new Date(c.date_added).toLocaleDateString('sr-RS'):''}</div>
   `;
   document.getElementById('leadDetailOverlay').classList.add('open');
+  renderLeadActivityInto('ldpActivityList', c.id);
 }
 
 function closeLeadDetail(){
@@ -3601,8 +3726,10 @@ async function saveLeadNote(id,notes){
   if(!lead)return;
   const val=notes.trim();
   if(lead.notes===val||(lead.notes==null&&val===''))return;
+  const oldNote=lead.notes||null;
   lead.notes=val||null;
   await sb.from('ghl_leads').update({notes:val||null}).eq('id',id);
+  logActivity(id,'note',oldNote,val||null);
   const btn=document.getElementById('nb-'+id);
   const span=document.getElementById('nbt-'+id);
   if(btn)btn.classList.toggle('has-note',Boolean(val));
@@ -3612,8 +3739,10 @@ async function saveLeadNote(id,notes){
 async function updateLeadFollowUp(id,date){
   const lead=cachedLeads.find(l=>l.id===id);
   if(!lead)return;
+  const oldDate=lead.follow_up_date||null;
   lead.follow_up_date=date||null;
   await sb.from('ghl_leads').update({follow_up_date:date||null}).eq('id',id);
+  logActivity(id,'followup',oldDate,date||null);
 }
 
 function updateLeadFollowUpPanel(id,date,input){
@@ -3635,28 +3764,33 @@ function updateLeadFollowUpPanel(id,date,input){
 async function assignLead(id,member){
   const lead=cachedLeads.find(l=>l.id===id);
   if(!lead)return;
+  const oldVal=lead.assigned_to||null;
   const newVal=lead.assigned_to===member?null:member;
   const {error}=await sb.from('ghl_leads').update({assigned_to:newVal}).eq('id',id);
-  if(!error){lead.assigned_to=newVal;renderLeads(cachedLeads);}
+  if(!error){lead.assigned_to=newVal;renderLeads(cachedLeads);logActivity(id,'assign',oldVal,newVal);}
 }
 
 async function updateLeadStatus(id,status){
+  const lead=cachedLeads.find(l=>l.id===id);
+  const oldStatus=lead?(lead.status||'Novi'):null;
   const {error}=await sb.from('ghl_leads').update({status}).eq('id',id);
   if(!error){
-    const lead=cachedLeads.find(l=>l.id===id);
     if(lead){
       lead.status=status;
       renderLeads(cachedLeads);
       if(currentLeadId===id)openLeadDetail(id);
     }
+    logActivity(id,'status',oldStatus,status);
   }
 }
 
 async function updateLeadDeal(id,deal){
+  const lead=cachedLeads.find(l=>l.id===id);
+  const oldDeal=lead?(lead.deal||null):null;
   const {error}=await sb.from('ghl_leads').update({deal:deal||null}).eq('id',id);
   if(!error){
-    const lead=cachedLeads.find(l=>l.id===id);
-    if(lead){lead.deal=deal||null;renderLeads(cachedLeads);}
+    if(lead){lead.deal=deal||null;renderLeads(cachedLeads);
+    logActivity(id,'deal',oldDeal,deal||null);}
   }
 }
 
