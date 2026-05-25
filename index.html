@@ -900,6 +900,32 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   .ms-closer-val { font-size:26px; }
 }
 
+/* ── MEMBER FOLLOW-UP LIST ──────────────── */
+.mfu-section { padding: 4px 0 10px; }
+.mfu-section-lbl {
+  font-size:9px; font-weight:800; letter-spacing:1.5px; text-transform:uppercase;
+  padding: 12px 18px 8px; opacity:.8;
+}
+.mfu-row {
+  display:flex; align-items:center; gap:12px;
+  padding: 11px 18px; border-top: 1px solid var(--b);
+  cursor:pointer; transition: background .12s;
+}
+.mfu-row:hover { background: var(--s2); }
+.mfu-date {
+  font-size:11px; font-weight:800; letter-spacing:.5px;
+  padding: 5px 9px; border-radius: 6px;
+  background: var(--s3); color: var(--muted);
+  min-width: 56px; text-align:center; flex-shrink:0;
+}
+.mfu-date.fu-today { background: rgba(234,179,8,.15); color: var(--yellow); }
+.mfu-date.fu-overdue { background: rgba(244,63,94,.12); color: var(--red); }
+.mfu-name { flex:1; min-width:0; overflow:hidden; }
+.mfu-status {
+  font-size:10px; font-weight:700; letter-spacing:.5px; text-transform:uppercase;
+  color: var(--muted2); padding: 3px 8px; border-radius:99px; background: var(--s3);
+}
+
 /* ── TOP WOLF ────────────────────────────── */
 :root { --wolf: #f59e0b; }
 .wolf-wrap { display:flex; flex-direction:column; gap:16px; }
@@ -1848,6 +1874,7 @@ function renderMain(data) {
   if (currentTab === 'team') el.innerHTML = renderTeam(data);
   else el.innerHTML = renderMember(data, currentTab);
   initChart(data);
+  if(currentTab==='mateja'||currentTab==='dusica') loadMemberFollowUps(currentTab);
 }
 
 function renderMember(data, member) {
@@ -1862,6 +1889,15 @@ function renderMember(data, member) {
         </div>
         ${renderLog(dm,member)}
       </div>
+      <div class="card mt">
+        <div class="card-head">
+          <div class="card-title">📅 Follow Up — ${cap(member)}</div>
+          <div class="card-hint" id="member-fu-count" style="font-size:11px;color:var(--muted);font-weight:700"></div>
+        </div>
+        <div id="member-fu-list" style="padding:8px 0">
+          <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">⏳ Učitavam follow-up listu...</div>
+        </div>
+      </div>
     </div>
     <div data-role="side" class="side-panel">
       ${renderSummary(data,member,color)}
@@ -1870,6 +1906,63 @@ function renderMember(data, member) {
         <div class="chart-wrap"><canvas id="barChart"></canvas></div>
       </div>
     </div>`;
+}
+
+async function loadMemberFollowUps(member){
+  const listEl=document.getElementById('member-fu-list');
+  const cntEl=document.getElementById('member-fu-count');
+  if(!listEl)return;
+  const todayStr=new Date().toISOString().slice(0,10);
+  const {data,error}=await sb.from('ghl_leads')
+    .select('id,name,phone,email,instagram,follow_up_date,status,lead_type,tags')
+    .eq('assigned_to',member)
+    .not('follow_up_date','is',null)
+    .neq('status','Closed')
+    .neq('status','DQ')
+    .order('follow_up_date',{ascending:true})
+    .limit(500);
+  if(error){listEl.innerHTML=`<div style="text-align:center;padding:20px;color:var(--red);font-size:12px">Greška: ${esc(error.message)}</div>`;return;}
+  const leads=data||[];
+  const overdue=leads.filter(l=>l.follow_up_date<todayStr);
+  const today=leads.filter(l=>l.follow_up_date===todayStr);
+  const upcoming=leads.filter(l=>l.follow_up_date>todayStr);
+  if(cntEl) cntEl.textContent=`${leads.length} ukupno · ${overdue.length} kasni · ${today.length} danas`;
+  if(!leads.length){
+    listEl.innerHTML=`<div style="text-align:center;padding:32px 16px;color:var(--muted);font-size:13px"><div style="font-size:24px;margin-bottom:8px">✨</div><div style="font-weight:700">Nema zakazanih follow-up poziva</div></div>`;
+    return;
+  }
+  const row=l=>{
+    const cls=l.follow_up_date<todayStr?'fu-overdue':l.follow_up_date===todayStr?'fu-today':'';
+    const dt=new Date(l.follow_up_date+'T00:00').toLocaleDateString('sr-RS',{day:'numeric',month:'short'});
+    const meta=[l.phone,l.instagram?`@${l.instagram.replace('@','')}`:''].filter(Boolean).join(' · ');
+    return `<div class="mfu-row" onclick="openLeadDetailFromMember('${esc(l.id)}')">
+      <div class="mfu-date ${cls}">${dt}</div>
+      <div class="mfu-name"><div style="font-weight:700;font-size:13px">${esc(l.name||'Nepoznat')}</div>${meta?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(meta)}</div>`:''}</div>
+      <div class="mfu-status">${esc(l.status||'Novi')}</div>
+      <span class="ltr-arrow" style="margin-left:auto">›</span>
+    </div>`;
+  };
+  const section=(title,arr,color)=>arr.length?`<div class="mfu-section"><div class="mfu-section-lbl" style="color:${color}">${title} · ${arr.length}</div>${arr.map(row).join('')}</div>`:'';
+  listEl.innerHTML=`
+    ${section('Kasni',overdue,'var(--red)')}
+    ${section('Danas',today,'var(--yellow)')}
+    ${section('Predstojeći',upcoming,'var(--muted)')}
+  `;
+}
+
+// Switch to Leads tab and open the lead detail panel
+async function openLeadDetailFromMember(id){
+  currentTab='leads';
+  setTab('leads');
+  // Wait a tick for leads to load, then open detail
+  setTimeout(async()=>{
+    if(!cachedLeads.find(l=>l.id===id)){
+      // Lead may not be in current subtab — load full set briefly
+      const {data}=await sb.from('ghl_leads').select('*').eq('id',id).single();
+      if(data){cachedLeads.push(data);}
+    }
+    openLeadDetail(id);
+  },400);
 }
 
 function renderTeam(data) {
