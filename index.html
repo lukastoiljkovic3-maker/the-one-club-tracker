@@ -989,6 +989,41 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   .funnel-stage-count { font-size: 22px; }
 }
 
+/* ── LIVE CLOSE CELEBRATION ────────────── */
+.close-celebrate {
+  position: fixed; top: 24px; left: 50%; transform: translateX(-50%) translateY(0);
+  display: flex; align-items: center; gap: 14px;
+  background: linear-gradient(135deg, rgba(34,197,94,.95), rgba(16,185,129,.95));
+  color: #052e1a;
+  border-radius: 16px; padding: 14px 20px;
+  box-shadow: 0 24px 60px rgba(34,197,94,.4), 0 0 0 1px rgba(255,255,255,.15);
+  z-index: 10000; animation: cc-drop .45s cubic-bezier(.16,1,.3,1);
+  overflow: hidden; min-width: 280px; max-width: 92vw;
+}
+.close-celebrate.leaving { animation: cc-lift .35s ease-in forwards; }
+.cc-emoji { font-size: 28px; line-height: 1; }
+.cc-title { font-size: 13px; font-weight: 900; letter-spacing: 2px; }
+.cc-sub   { font-size: 14px; font-weight: 700; margin-top: 2px; }
+.cc-close {
+  cursor: pointer; font-size: 22px; line-height: 1; padding: 0 4px;
+  color: rgba(5,46,26,.6);
+}
+.cc-close:hover { color: #052e1a; }
+.cc-confetti {
+  position: absolute; top: -8px; width: 6px; height: 10px; border-radius: 2px;
+  pointer-events: none; animation: cc-fall linear forwards;
+}
+@keyframes cc-drop {
+  from { transform: translateX(-50%) translateY(-140%); opacity: 0; }
+  to   { transform: translateX(-50%) translateY(0);     opacity: 1; }
+}
+@keyframes cc-lift {
+  to { transform: translateX(-50%) translateY(-160%); opacity: 0; }
+}
+@keyframes cc-fall {
+  to { transform: translateY(180px) rotate(540deg); opacity: 0; }
+}
+
 /* ── MORNING BRIEFING ──────────────────── */
 .briefing-card {
   background: linear-gradient(135deg, color-mix(in srgb, var(--bc) 12%, transparent), var(--s1));
@@ -1987,6 +2022,7 @@ async function signOut() {
       setHeaderUser(session.user);
       currentUserEmail = session.user.email || null;
       stlStart();
+      startCloseCelebrations();
     } else {
       showAuthGate();
       setHeaderUser(null);
@@ -3472,6 +3508,72 @@ async function stlPoll(){
   } catch (e) {
     // Quiet — network blips shouldn't spam logs
   }
+}
+
+/* ─────────────────── LIVE CLOSE CELEBRATION ───────────────────────
+ * Subscribes to Supabase Realtime INSERTs on lead_activities where
+ * action_type='status' AND new_value='Closed'. Renders a celebration
+ * banner with the lead name + which rep closed it. Visible for ~10s,
+ * dismissable, and works across all open browser tabs.
+ *
+ * Requires Realtime enabled for lead_activities in the Supabase
+ * dashboard (Database → Replication → toggle on). Falls back silently
+ * if Realtime is disabled.
+ * ─────────────────────────────────────────────────────────────── */
+let _closeChannel = null;
+function startCloseCelebrations(){
+  if (_closeChannel || !sb || !sb.channel) return;
+  try {
+    _closeChannel = sb.channel('toc-closes')
+      .on('postgres_changes', {
+        event: 'INSERT', schema: 'public', table: 'lead_activities',
+        filter: 'action_type=eq.status'
+      }, async (payload) => {
+        const row = payload?.new;
+        if (!row || row.new_value !== 'Closed') return;
+        // Look up lead name + rep
+        let leadName = 'Lead', rep = '';
+        try {
+          const { data } = await sb.from('ghl_leads')
+            .select('name,assigned_to').eq('id', row.lead_id).single();
+          if (data) {
+            leadName = data.name || 'Lead';
+            rep = data.assigned_to || (row.actor_email||'').split('@')[0] || '';
+          }
+        } catch {}
+        showCloseCelebration(leadName, rep);
+      })
+      .subscribe();
+  } catch (e) { /* realtime not available */ }
+}
+
+function showCloseCelebration(leadName, rep){
+  const wrap = document.body;
+  const repCap = rep ? rep.charAt(0).toUpperCase() + rep.slice(1) : '';
+  const banner = document.createElement('div');
+  banner.className = 'close-celebrate';
+  banner.innerHTML = `
+    <div class="cc-emoji">🎉</div>
+    <div class="cc-text">
+      <div class="cc-title">CLOSED!</div>
+      <div class="cc-sub">${repCap?esc(repCap)+' zatvorio ':''}<strong>${esc(leadName)}</strong></div>
+    </div>
+    <div class="cc-close">×</div>
+  `;
+  wrap.appendChild(banner);
+  // Confetti dots
+  for (let i = 0; i < 14; i++) {
+    const dot = document.createElement('span');
+    dot.className = 'cc-confetti';
+    dot.style.left  = Math.random()*100 + '%';
+    dot.style.background = ['#f43f5e','#22c55e','#3b82f6','#a855f7','#eab308','#f97316'][i%6];
+    dot.style.animationDelay = (Math.random()*.4) + 's';
+    dot.style.animationDuration = (1.2 + Math.random()*1.5) + 's';
+    banner.appendChild(dot);
+  }
+  const dismiss = () => { banner.classList.add('leaving'); setTimeout(() => banner.remove(), 350); };
+  banner.querySelector('.cc-close').onclick = dismiss;
+  setTimeout(dismiss, 10000);
 }
 
 function stlStart(){
