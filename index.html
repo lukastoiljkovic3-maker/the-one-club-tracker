@@ -900,6 +900,41 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   .ms-closer-val { font-size:26px; }
 }
 
+/* ── CLICK-TO-CONTACT BIG BUTTONS (detail panel) ── */
+.ldp-contact-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ldp-ca-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  padding: 12px 14px; border-radius: 11px; border: 1px solid var(--b);
+  background: var(--s2); color: var(--text);
+  font-size: 13px; font-weight: 700; letter-spacing: .2px;
+  text-decoration: none; cursor: pointer;
+  transition: all .12s;
+}
+.ldp-ca-btn:hover { transform: translateY(-1px); border-color: var(--b2); }
+.ldp-ca-btn.ldp-ca-call:hover { background: rgba(59,130,246,.10); border-color: rgba(59,130,246,.45); color: #60a5fa; }
+.ldp-ca-btn.ldp-ca-wa:hover   { background: rgba(37,211,102,.10); border-color: rgba(37,211,102,.5);  color: #25D366; }
+.ldp-ca-btn.ldp-ca-call svg { color: #3b82f6; }
+.ldp-ca-btn.ldp-ca-wa   svg { color: #25D366; }
+
+/* ── CLICK-TO-CONTACT ICONS ────────────── */
+.ca-row { display:inline-flex; gap:6px; margin-left:8px; vertical-align:middle; }
+.ca-btn {
+  display:inline-grid; place-items:center;
+  width:24px; height:24px; border-radius:7px;
+  border: 1px solid var(--b);
+  background: var(--s2);
+  color: var(--muted);
+  cursor: pointer; transition: all .12s;
+  text-decoration: none;
+}
+.ca-btn:hover { transform: translateY(-1px); }
+.ca-btn.ca-call { color: var(--nikola, #3b82f6); }
+.ca-btn.ca-call:hover { background: rgba(59,130,246,.12); border-color: rgba(59,130,246,.4); }
+.ca-btn.ca-wa   { color: #25D366; }
+.ca-btn.ca-wa:hover   { background: rgba(37,211,102,.12); border-color: rgba(37,211,102,.4); }
+.ca-btn.ca-lg { width:38px; height:38px; border-radius:10px; }
+.ca-btn.ca-lg svg { width:18px; height:18px; }
+
 /* ── SPEED-TO-LEAD TOAST ───────────────── */
 .stl-toast-wrap {
   position: fixed; right: 16px; bottom: 16px;
@@ -1982,7 +2017,7 @@ async function loadMemberFollowUps(member){
     const meta=[l.phone,l.instagram?`@${l.instagram.replace('@','')}`:''].filter(Boolean).join(' · ');
     return `<div class="mfu-row" onclick="openLeadDetailFromMember('${esc(l.id)}')">
       <div class="mfu-date ${cls}">${dt}</div>
-      <div class="mfu-name"><div style="font-weight:700;font-size:13px">${esc(l.name||'Nepoznat')}</div>${meta?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(meta)}</div>`:''}</div>
+      <div class="mfu-name"><div style="font-weight:700;font-size:13px">${esc(l.name||'Nepoznat')}${contactActions(l)}</div>${meta?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(meta)}</div>`:''}</div>
       <div class="mfu-status">${esc(l.status||'Novi')}</div>
       <span class="ltr-arrow" style="margin-left:auto">›</span>
     </div>`;
@@ -2780,6 +2815,56 @@ async function loadLeads(lead_type){
   return data||[];
 }
 
+/* ─────────────────── CLICK-TO-CONTACT HELPERS ─────────────────────
+ * Strip the phone to digits (+ allowed). Build wa.me links with a
+ * pre-filled greeting and tel: links for the native dialer.
+ * ─────────────────────────────────────────────────────────────── */
+function cleanPhone(p){
+  if (!p) return '';
+  // Keep leading '+' but strip everything non-digit
+  const s = String(p).trim();
+  const lead = s.startsWith('+') ? '+' : '';
+  return lead + s.replace(/[^\d]/g, '');
+}
+function waGreetingFor(lead){
+  const firstName = (lead.name || '').split(' ')[0] || '';
+  const repName   = lead.assigned_to === 'mateja' ? 'Mateja'
+                  : lead.assigned_to === 'dusica' ? 'Dušica' : '';
+  if (firstName && repName) {
+    return `Zdravo ${firstName}, ja sam ${repName} iz The One Cluba. Hvala što si se prijavio/la — kada ti odgovara kratak poziv?`;
+  }
+  if (firstName) {
+    return `Zdravo ${firstName}, javljam ti se iz The One Cluba. Kada ti odgovara kratak poziv?`;
+  }
+  return `Zdravo, javljam ti se iz The One Cluba.`;
+}
+function waLink(lead){
+  const phone = cleanPhone(lead.phone).replace(/^\+/, '');
+  if (!phone) return '';
+  return `https://wa.me/${phone}?text=${encodeURIComponent(waGreetingFor(lead))}`;
+}
+function telLink(phone){
+  const p = cleanPhone(phone);
+  return p ? `tel:${p}` : '';
+}
+// Inline icon pair used next to phone numbers in lead rows/cards.
+function contactActions(lead, size = 'sm'){
+  if (!lead || !lead.phone) return '';
+  const cls = size === 'lg' ? 'ca-btn ca-lg' : 'ca-btn';
+  const wa  = waLink(lead);
+  const tel = telLink(lead.phone);
+  return `
+    <span class="ca-row" onclick="event.stopPropagation()">
+      ${tel?`<a class="${cls} ca-call" href="${tel}" title="Pozovi" aria-label="Pozovi">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+      </a>`:''}
+      ${wa?`<a class="${cls} ca-wa" href="${wa}" target="_blank" rel="noopener" title="WhatsApp" aria-label="WhatsApp">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.555-5.338 11.891-11.893 11.891a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.51 5.26l-.999 3.648 3.978-.607zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.711.306 1.265.489 1.697.626.713.226 1.362.194 1.875.118.572-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+      </a>`:''}
+    </span>
+  `;
+}
+
 /* ─────────────────── SPEED-TO-LEAD NOTIFICATIONS ──────────────────
  * Polls /api/ghl-recent every ~90s. The first poll establishes a
  * baseline of "already seen" lead IDs (no notifications fired).
@@ -3180,7 +3265,7 @@ function buildLeadRows(leads){
     return `<tr onclick="openLeadDetail('${esc(c.id)}')">
       <td><div class="ltr-contact">
         <div class="ltr-av ${avCls}">${initials}</div>
-        <div><div class="ltr-name">${esc(c.name)}</div>${meta?`<div class="ltr-sub">${esc(meta)}</div>`:''}</div>
+        <div><div class="ltr-name">${esc(c.name)}${contactActions(c)}</div>${meta?`<div class="ltr-sub">${esc(meta)}</div>`:''}</div>
       </div></td>
       <td>${typePill(c.lead_type)}</td>
       <td class="col-mob" onclick="event.stopPropagation()">
@@ -3319,6 +3404,19 @@ function openLeadDetail(id){
   document.getElementById('ldpName').textContent=c.name||'Nepoznat';
   document.getElementById('ldpMeta').innerHTML=meta.map(p=>`<span>${esc(p)}</span>`).join('<span style="margin:0 5px;opacity:.3">·</span>');
   document.getElementById('ldpBody').innerHTML=`
+    ${c.phone?`<div style="margin-bottom:14px">
+      <div class="ldp-sec-lbl">Kontakt</div>
+      <div class="ldp-contact-actions">
+        ${telLink(c.phone)?`<a class="ldp-ca-btn ldp-ca-call" href="${telLink(c.phone)}">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          Pozovi
+        </a>`:''}
+        ${waLink(c)?`<a class="ldp-ca-btn ldp-ca-wa" href="${waLink(c)}" target="_blank" rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.555-5.338 11.891-11.893 11.891a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.51 5.26l-.999 3.648 3.978-.607zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.711.306 1.265.489 1.697.626.713.226 1.362.194 1.875.118.572-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
+          WhatsApp
+        </a>`:''}
+      </div>
+    </div>`:''}
     <div>
       <div class="ldp-sec-lbl">Status & Assign</div>
       <div class="ldp-status-grid">
