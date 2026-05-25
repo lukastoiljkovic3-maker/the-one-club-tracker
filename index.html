@@ -900,6 +900,44 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   .ms-closer-val { font-size:26px; }
 }
 
+/* ── CONVERSION FUNNEL ─────────────────── */
+.funnel-wrap { display:flex; flex-direction:column; gap:6px; padding: 12px 4px; }
+.funnel-stage { display:flex; flex-direction:column; gap:6px; align-items:flex-start; }
+.funnel-bar {
+  height: 56px; border-radius: 12px;
+  display: flex; align-items: center; justify-content: flex-end;
+  padding: 0 18px; min-width: 80px;
+  transition: width .6s cubic-bezier(.16,1,.3,1);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.funnel-stage-count {
+  font-size: 26px; font-weight: 900; letter-spacing: -1px;
+  text-shadow: 0 1px 8px rgba(0,0,0,.4);
+}
+.funnel-stage-lbl {
+  font-size: 11px; font-weight: 700; letter-spacing: .5px;
+  color: var(--muted); text-transform: uppercase;
+  padding-left: 6px;
+}
+.funnel-arrow {
+  padding: 4px 0 4px 18px;
+  display: flex; align-items: center; gap: 14px;
+}
+.funnel-arrow-conv { font-size: 11px; font-weight: 800; letter-spacing: .3px; }
+.funnel-arrow-survive { font-size: 10px; color: var(--muted2); font-weight: 600; letter-spacing: .3px; }
+.funnel-summary {
+  margin-top: 16px; padding: 14px 18px;
+  background: var(--s2); border: 1px solid var(--b); border-radius: 12px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.funnel-summary-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.funnel-summary-lbl { font-size: 11px; color: var(--muted); font-weight: 600; letter-spacing: .3px; }
+.funnel-summary-val { font-size: 17px; font-weight: 900; color: var(--text); letter-spacing: -.5px; }
+@media (max-width: 600px) {
+  .funnel-bar { height: 48px; padding: 0 14px; }
+  .funnel-stage-count { font-size: 22px; }
+}
+
 /* ── BULK ACTIONS ──────────────────────── */
 .ltr-chk-cell { width: 36px; padding-left: 14px !important; padding-right: 4px !important; }
 .ltr-chk {
@@ -2761,12 +2799,87 @@ async function renderMetricsTab(){
 
     ${renderTargetsSection(tot)}
 
+    <div id="funnel-section"></div>
+
     ${await renderCommissionSection()}
 
   </div>`;
 
   // Init chart after DOM is set
   initTrendChart(chartData);
+  renderFunnelSection();
+}
+
+/* ── CONVERSION FUNNEL ───────────────────────────────────────────
+ * Visualizes the webinar funnel: Webinar Lead → Attended → Qualified → Closed.
+ * Uses Supabase head counts on tracker tags, and ghl_leads.status='Closed'
+ * for the bottom stage, restricted to contacts that ever had a webinar tag.
+ * ─────────────────────────────────────────────────────────────── */
+async function renderFunnelSection(){
+  const host = document.getElementById('funnel-section');
+  if (!host) return;
+  host.innerHTML = `<div class="metrics-sec">
+    <div class="metrics-sec-lbl">PRODAJNI LIJEVAK — Webinar Funnel</div>
+    <div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">⏳ Učitavam...</div>
+  </div>`;
+
+  const webinarTags = ['webinar-lead','qualified-webinar','disqualified-webinar','prisustvovao-webinaru'];
+
+  const [regR, attR, qualR, closedR] = await Promise.all([
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags', webinarTags),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags', ['prisustvovao-webinaru']),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags', ['qualified-webinar']),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags', webinarTags).eq('status','Closed'),
+  ]);
+
+  const stages = [
+    { key:'reg',    label:'Prijavili se na webinar',  count: regR.count||0,    color:'#3b82f6' },
+    { key:'att',    label:'Prisustvovali webinaru',   count: attR.count||0,    color:'#a855f7' },
+    { key:'qual',   label:'Qualified (post-webinar)', count: qualR.count||0,   color:'#f59e0b' },
+    { key:'closed', label:'Closed',                   count: closedR.count||0, color:'#22c55e' },
+  ];
+  const top = stages[0].count || 1;
+  const pctOf = n => Math.round((n / top) * 100);
+  const drop  = (a,b) => a === 0 ? 0 : Math.round(((a-b)/a) * 100);
+  const conv  = (a,b) => a === 0 ? 0 : Math.round((b/a) * 100);
+
+  host.innerHTML = `<div class="metrics-sec">
+    <div class="metrics-sec-lbl">PRODAJNI LIJEVAK — Webinar Funnel</div>
+    <div class="funnel-wrap">
+      ${stages.map((s, i) => {
+        const w = pctOf(s.count);
+        const prev = i>0 ? stages[i-1] : null;
+        const dropPct = prev ? drop(prev.count, s.count) : 0;
+        const convPct = prev ? conv(prev.count, s.count) : 100;
+        return `
+          ${prev ? `<div class="funnel-arrow">
+            <span class="funnel-arrow-conv" style="color:${dropPct<50?'var(--green)':dropPct<75?'var(--yellow)':'var(--red)'}">▼ ${dropPct}% otpalo</span>
+            <span class="funnel-arrow-survive">${convPct}% prošlo dalje</span>
+          </div>` : ''}
+          <div class="funnel-stage">
+            <div class="funnel-bar" style="width:${Math.max(w,12)}%;background:linear-gradient(90deg, ${s.color}40, ${s.color}99)">
+              <span class="funnel-stage-count" style="color:${s.color}">${s.count.toLocaleString('sr-RS')}</span>
+            </div>
+            <div class="funnel-stage-lbl">${s.label}</div>
+          </div>
+        `;
+      }).join('')}
+      <div class="funnel-summary">
+        <div class="funnel-summary-row">
+          <span class="funnel-summary-lbl">Ukupna konverzija (prijava → close)</span>
+          <span class="funnel-summary-val" style="color:var(--green)">${conv(stages[0].count, stages[3].count)}%</span>
+        </div>
+        <div class="funnel-summary-row">
+          <span class="funnel-summary-lbl">Show-up rate (prijava → prisustvo)</span>
+          <span class="funnel-summary-val">${conv(stages[0].count, stages[1].count)}%</span>
+        </div>
+        <div class="funnel-summary-row">
+          <span class="funnel-summary-lbl">Close rate qualified-a</span>
+          <span class="funnel-summary-val">${conv(stages[2].count, stages[3].count)}%</span>
+        </div>
+      </div>
+    </div>
+  </div>`;
 }
 
 /* ── TARGETS ── */
