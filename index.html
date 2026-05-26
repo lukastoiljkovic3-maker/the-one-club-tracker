@@ -4391,7 +4391,7 @@ function waGreetingFor(lead){
                   : lead.assigned_to === 'dusica' ? 'Dušica' : '';
   const attended  = Array.isArray(lead.tags) && lead.tags.includes('prisustvovao-webinaru');
   const name = firstName || '';
-  const intro = repName ? `ovde ${repName} iz Borisovog tima` : `javljam ti se iz Borisovog tima`;
+  const intro = repName ? `ovde ${repName} iz Boris FX tima` : `javljam ti se iz Boris FX tima`;
   const middle = attended ? `, vidim da si bio na predavanju u nedelju` : '';
   return `Ćao ${name}, ${intro}${middle}. Jel imaš sekund?`;
 }
