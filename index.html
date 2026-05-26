@@ -4116,24 +4116,60 @@ function toggleAIScenarioMenu(leadId, ev){
 async function logCallOutcome(leadId, outcome){
   const lead = (cachedLeads||[]).find(l => l.id === leadId);
   if (!lead) return;
-  // Log to activity
-  await logActivity(leadId, 'call', null, outcome);
+  // Log call to activity (non-blocking)
+  logActivity(leadId, 'call', null, outcome);
+
   // Auto-status changes based on outcome
   const statusMap = {
     'Pogrešan broj': 'DQ',
-    'Javio se': lead.status === 'Novi' ? 'Follow Up' : lead.status,
+    'Javio se': lead.status === 'Novi' ? 'Follow Up' : null,
   };
   const newStatus = statusMap[outcome];
   if (newStatus && newStatus !== lead.status) {
-    await updateLeadStatus(leadId, newStatus);
-  } else {
-    // Just refresh the panel so the timeline shows the new entry
-    if (currentLeadId === leadId) {
-      renderLeadActivityInto('ldpActivityList', leadId);
+    const oldStatus = lead.status || 'Novi';
+    const { error } = await sb.from('ghl_leads').update({ status: newStatus }).eq('id', leadId);
+    if (!error) {
+      lead.status = newStatus;
+      logActivity(leadId, 'status', oldStatus, newStatus);
+      pushStatusToGHL(leadId, oldStatus, newStatus);
+      // Partial panel update — don't full re-render
+      if (currentLeadId === leadId) updatePanelStatusButtons(newStatus);
+      refreshLeadRows();
     }
   }
-  // Flash a toast
+  // Always refresh the activity timeline so the new entry appears
+  if (currentLeadId === leadId) {
+    setTimeout(() => renderLeadActivityInto('ldpActivityList', leadId), 80);
+  }
   showCallOutcomeToast(lead.name, outcome);
+}
+
+// Update active state of status buttons inside the open detail panel
+function updatePanelStatusButtons(status){
+  const grid = document.querySelector('#ldpBody .ldp-status-grid');
+  if (!grid) return;
+  const statusToClass = { 'Novi':'ldp-st-novi', 'Follow Up':'ldp-st-fu', 'Closed':'ldp-st-closed', 'DQ':'ldp-st-dq' };
+  grid.querySelectorAll('.ldp-st-btn').forEach(btn => {
+    Object.values(statusToClass).forEach(c => btn.classList.remove(c));
+  });
+  grid.querySelectorAll('.ldp-st-btn').forEach(btn => {
+    const label = btn.textContent.trim();
+    if (label === status) {
+      btn.classList.add(statusToClass[status] || '');
+    }
+  });
+}
+
+// Update active state of assign buttons inside the open detail panel
+function updatePanelAssignButtons(assignedTo){
+  const row = document.querySelector('#ldpBody .ldp-assign-row');
+  if (!row) return;
+  row.querySelectorAll('.ldp-assign-btn').forEach(btn => {
+    btn.classList.remove('ldp-ab-m', 'ldp-ab-d');
+    const label = btn.textContent.trim().toLowerCase();
+    if (assignedTo === 'mateja' && label.includes('mateja')) btn.classList.add('ldp-ab-m');
+    if (assignedTo === 'dusica' && label.includes('dusica')) btn.classList.add('ldp-ab-d');
+  });
 }
 
 function showCallOutcomeToast(name, outcome){
@@ -5540,8 +5576,21 @@ function closeLeadDetail(){
 }
 
 async function assignLeadPanel(id,member){
-  await assignLead(id,member);
-  openLeadDetail(id); // refresh panel
+  const lead = (cachedLeads||[]).find(l => l.id === id);
+  if (!lead) return;
+  const oldVal = lead.assigned_to || null;
+  const newVal = lead.assigned_to === member ? null : member;
+  const { error } = await sb.from('ghl_leads').update({ assigned_to: newVal }).eq('id', id);
+  if (error) return;
+  lead.assigned_to = newVal;
+  logActivity(id, 'assign', oldVal, newVal);
+  // Partial UI updates instead of full panel re-render
+  if (currentLeadId === id) updatePanelAssignButtons(newVal);
+  refreshLeadRows();
+  // Refresh activity timeline
+  if (currentLeadId === id) {
+    setTimeout(() => renderLeadActivityInto('ldpActivityList', id), 80);
+  }
 }
 
 function renderLeadCard(lead, subTab){
@@ -5716,15 +5765,19 @@ async function assignLead(id,member){
 async function updateLeadStatus(id,status){
   const lead=cachedLeads.find(l=>l.id===id);
   const oldStatus=lead?(lead.status||'Novi'):null;
+  if (oldStatus === status) return;  // no-op
   const {error}=await sb.from('ghl_leads').update({status}).eq('id',id);
   if(!error){
     if(lead){
       lead.status=status;
-      renderLeads(cachedLeads);
-      if(currentLeadId===id)openLeadDetail(id);
+      // Partial updates only — keep panel buttons in place
+      refreshLeadRows();
+      if (currentLeadId === id) {
+        updatePanelStatusButtons(status);
+        setTimeout(() => renderLeadActivityInto('ldpActivityList', id), 80);
+      }
     }
     logActivity(id,'status',oldStatus,status);
-    // Two-way sync: push corresponding tag to GHL
     pushStatusToGHL(id, oldStatus, status);
   }
 }
