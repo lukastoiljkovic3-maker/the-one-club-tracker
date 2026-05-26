@@ -29,24 +29,28 @@ Ako rep nije poznat — koristi "javljam ti se" umesto "ovde [rep]".
 
 Vrati SAMO tekst poruke, 2 rečenice maksimum.`,
 
-  'no-pickup': `Lead se NIJE javio na poziv. Ovo je follow-up.
+  'no-pickup': `Ti, lično, si pokušao da pozoveš leada, on se nije javio. Sada mu pišeš WhatsApp poruku.
 
-VIBE — kritično:
-- Mi ne jurimo nikoga. Ovo nije "molim te javi se", ovo je "ako te zanima, znaš gde sam".
+KRITIČNO za razumevanje:
+- TI (rep iz konteksta) si onaj koji je zvao. Ne neko drugi.
+- Ne pričaš o sebi u 3. licu, ne pominješ ime rep-a u poruci.
+- Ne pominješ druge ljude iz tima.
+
+VIBE:
+- Mi ne jurimo nikoga. Ovo nije "molim te javi se", ovo je "ako te zanima — znaš gde sam".
 - Mirno, kratko, bez izvinjavanja, bez molbi.
 - Maks 1-2 rečenice. NIKAD više.
-- Energija: "imam ja drugih lidova, ako tebi treba — javi se, ako ne — slobodno".
 
-Primeri dobre energije:
-"[ime], probao sam ali se nisi javio. Kad budeš slobodan javi mi se."
-"[ime], nisam te dobio. Javi se kada možeš."
+Primeri dobre energije (ti si onaj koji piše, ne pominješ svoje ime):
+"[ime], probao sam da te dobijem ali se nisi javio. Kad budeš slobodan javi mi se."
+"[ime], nisam uspeo da te dobijem. Javi mi se kad možeš."
 "Pokušao sam [ime], slobodno se javi kad ti odgovara."
 
 NIKAD:
 - "Molim te"
+- "Čuo sam za tebe od [neko]"  ← TI si zvao, nije te neko drugi pominjao
 - "Bilo bi super da..."
-- "Čekam tvoju poruku"
-- "Da li bismo mogli..."`,
+- "Čekam tvoju poruku"`,
 
   'asked-info': `Lead je pre nekoliko dana tražio info pa nije odgovorio. Ovo je nudge.
 
