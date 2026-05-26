@@ -1040,6 +1040,54 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   .ms-closer-val { font-size:26px; }
 }
 
+/* ── MANAGER DASHBOARD ──────────────── */
+.md-wrap { display: flex; flex-direction: column; gap: 18px; }
+.md-header { display: flex; justify-content: space-between; align-items: center; }
+.md-title { font-size: 24px; font-weight: 900; letter-spacing: -.8px; }
+.md-sub { font-size: 12px; color: var(--muted); font-weight: 600; margin-top: 4px; text-transform: capitalize; }
+.md-totals { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.md-total {
+  background: var(--s1); border: 1px solid var(--b); border-radius: 14px;
+  padding: 16px 18px;
+}
+.md-total-val { font-size: 28px; font-weight: 900; letter-spacing: -1px; line-height: 1; }
+.md-total-lbl { font-size: 10px; color: var(--muted); font-weight: 700; letter-spacing: 1px; text-transform: uppercase; margin-top: 6px; }
+.md-reps { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.md-rep {
+  background: var(--s1); border: 1px solid var(--b); border-radius: 16px;
+  padding: 18px; border-left: 4px solid var(--rc, var(--text));
+}
+.md-rep-head { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+.md-rep-av {
+  width: 44px; height: 44px; border-radius: 50%; object-fit: cover;
+  border: 2px solid var(--rc, var(--b));
+}
+.md-rep-name { font-size: 17px; font-weight: 900; }
+.md-rep-sub { font-size: 11px; color: var(--muted); margin-top: 2px; font-weight: 600; }
+.md-rep-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.md-stat {
+  background: var(--s2); border: 1px solid var(--b); border-radius: 10px;
+  padding: 10px 12px;
+}
+.md-stat-val { font-size: 18px; font-weight: 900; letter-spacing: -.5px; line-height: 1; }
+.md-stat-lbl { font-size: 9px; color: var(--muted); font-weight: 700; letter-spacing: .8px; text-transform: uppercase; margin-top: 5px; }
+.md-stat-bar { height: 3px; background: var(--s3); border-radius: 99px; margin-top: 6px; overflow: hidden; }
+.md-stat-bar-fill { height: 100%; border-radius: 99px; transition: width .5s; }
+.md-actions { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 8px; }
+.md-action-btn {
+  flex: 1; min-width: 200px;
+  background: var(--s2); border: 1px solid var(--b); color: var(--text);
+  padding: 12px 14px; border-radius: 11px; cursor: pointer;
+  font-family: inherit; font-size: 13px; font-weight: 700;
+  transition: all .12s;
+}
+.md-action-btn:hover { border-color: var(--b2); transform: translateY(-1px); background: var(--s3); }
+@media (max-width: 900px) {
+  .md-totals { grid-template-columns: repeat(2, 1fr); }
+  .md-reps { grid-template-columns: 1fr; }
+  .md-rep-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
 /* ── HEATMAP ──────────────────────────── */
 .hm-wrap { padding: 14px 4px; }
 .hm-row, .hm-hr-row {
@@ -1231,7 +1279,34 @@ tr.ltr-selected:hover { background: rgba(34,197,94,.10); }
 .lat-time { font-size: 10px; color: var(--muted2); font-weight: 600; margin-top: 2px; letter-spacing: .3px; }
 
 /* ── CLICK-TO-CONTACT BIG BUTTONS (detail panel) ── */
-.ldp-contact-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ldp-contact-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 8px; }
+.ldp-ca-btn.ldp-ca-ai {
+  background: linear-gradient(135deg, rgba(168,85,247,.12), rgba(147,51,234,.08));
+  border-color: rgba(168,85,247,.4); color: var(--mateja);
+  font-weight: 800;
+}
+.ldp-ca-btn.ldp-ca-ai:hover {
+  background: linear-gradient(135deg, rgba(168,85,247,.2), rgba(147,51,234,.15));
+  border-color: rgba(168,85,247,.7); color: #d8b4fe;
+}
+.ldp-ca-btn.ldp-ca-ai:disabled { opacity: .6; cursor: wait; }
+
+/* Call outcome quick buttons */
+.ldp-call-outcomes {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+  gap: 6px; margin-bottom: 8px;
+}
+.ldp-co-btn {
+  padding: 9px 8px; border-radius: 9px;
+  background: var(--s2); border: 1px solid var(--b); color: var(--text);
+  font-size: 12px; font-weight: 700; cursor: pointer; transition: all .12s;
+  font-family: inherit;
+}
+.ldp-co-btn:hover { transform: translateY(-1px); border-color: var(--b2); }
+.ldp-co-ans:hover  { background: rgba(34,197,94,.10);  border-color: rgba(34,197,94,.4);  color: var(--green); }
+.ldp-co-noans:hover{ background: rgba(234,179,8,.10);  border-color: rgba(234,179,8,.4);  color: var(--yellow); }
+.ldp-co-vm:hover   { background: rgba(96,165,250,.10); border-color: rgba(96,165,250,.4); color: #60a5fa; }
+.ldp-co-bad:hover  { background: rgba(244,63,94,.10);  border-color: rgba(244,63,94,.4);  color: var(--red); }
 .ldp-ca-btn {
   display: flex; align-items: center; justify-content: center; gap: 8px;
   padding: 12px 14px; border-radius: 11px; border: 1px solid var(--b);
@@ -1874,6 +1949,9 @@ button, .tab, .btn, .btn-add, .cal-cell, .log-table tbody tr { touch-action: man
       <button class="tab" data-member="wolf" onclick="setTab('wolf')">
         <span class="tab-pip" style="background:#f59e0b"></span> Wolf
       </button>
+      <button class="tab manager-only" data-member="manager" onclick="setTab('manager')" style="display:none">
+        <span class="tab-pip" style="background:var(--green)"></span> Pregled
+      </button>
     </div>
     <button class="btn-add" onclick="openModal(null)">
       <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -1996,6 +2074,13 @@ button, .tab, .btn, .btn-add, .cal-cell, .log-table tbody tr { touch-action: man
     </svg>
     <span>Wolf</span>
   </button>
+  <button class="bnav-btn manager-only" data-tab="manager" onclick="setTab('manager')" style="color:var(--green);display:none">
+    <div class="bnav-pip"></div>
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7" height="9"/><rect x="14" y="3" width="7" height="5"/><rect x="14" y="12" width="7" height="9"/><rect x="3" y="16" width="7" height="5"/>
+    </svg>
+    <span>Pregled</span>
+  </button>
 </nav>
 
 <script>
@@ -2030,6 +2115,11 @@ let cachedLeads  = [];
 let leadCounts   = { all: 0, qualified: 0, disqualified: 0, webinar_lead: 0, webinar_attended: 0, lead_magnet: 0 };
 let openNotes    = new Set();
 let currentUserEmail = null;  // Set after auth; used as actor for activity log
+// Emails that see the Manager dashboard ('Pregled') tab. Add yours here.
+const MANAGER_EMAILS = new Set([
+  'lukastoiljkovic3@gmail.com',
+]);
+function isManager(){ return currentUserEmail && MANAGER_EMAILS.has(currentUserEmail.toLowerCase()); }
 let selectedLeadIds = new Set();  // Currently checked leads for bulk actions
 
 // Monthly targets (persisted in localStorage)
@@ -2140,6 +2230,9 @@ async function signOut() {
       stlStart();
       startCloseCelebrations();
       installKeyboardShortcuts();
+      if (isManager()) {
+        document.querySelectorAll('.manager-only').forEach(el => el.style.display = '');
+      }
     } else {
       showAuthGate();
       setHeaderUser(null);
@@ -2186,7 +2279,7 @@ function setTab(tab) {
   currentTab = tab;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.member === tab));
   document.querySelectorAll('.bnav-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  document.querySelector('.fab').classList.toggle('fab-hidden', tab === 'leads' || tab === 'metrics' || tab === 'wolf');
+  document.querySelector('.fab').classList.toggle('fab-hidden', tab === 'leads' || tab === 'metrics' || tab === 'wolf' || tab === 'manager');
 
   // Clear any existing metrics refresh interval
   if (metricsRefreshInterval) { clearInterval(metricsRefreshInterval); metricsRefreshInterval = null; }
@@ -2230,6 +2323,12 @@ async function render() {
     kpi.innerHTML = '';
     mc.style.cssText = 'display:block;';
     await renderWolfTab();
+    return;
+  }
+  if (currentTab === 'manager') {
+    kpi.innerHTML = '';
+    mc.style.cssText = 'display:block;';
+    await renderManagerDashboard();
     return;
   }
   mc.style.cssText = '';
@@ -3127,6 +3226,151 @@ async function renderMetricsTab(){
   renderHeatmapSection();
 }
 
+/* ── MANAGER DASHBOARD ──────────────────────────────────────────
+ * Manager-only single-screen overview. Shows per-rep:
+ *   - Calls today vs target
+ *   - Closes today / this week / this month
+ *   - Open pipeline ($)
+ *   - Top stale lead (oldest "Follow Up" untouched)
+ *   - Last activity time
+ * + team-wide totals at the top.
+ * ─────────────────────────────────────────────────────────────── */
+async function renderManagerDashboard(){
+  const el = document.getElementById('mainContent');
+  el.innerHTML = `<div class="empty"><div class="empty-icon" style="font-size:20px">⏳</div><div class="empty-text">Učitavam pregled...</div></div>`;
+
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0,10);
+  const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate()-7);
+  const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  const data = await loadData();
+  const members = ['mateja', 'dusica'];
+
+  const repStats = await Promise.all(members.map(async (m) => {
+    const t = getTargets();
+    // Daily entries for today / week / MTD
+    const dt = data?.[m]?.[today.getFullYear()]?.[today.getMonth()]?.[today.getDate()] || {};
+    const mtd = sum(gm(data, m, today.getFullYear(), today.getMonth()));
+    // Weekly close count
+    let weekClose = 0, weekCalls = 0;
+    for (let d = new Date(weekAgo); d <= today; d.setDate(d.getDate()+1)) {
+      const e = data?.[m]?.[d.getFullYear()]?.[d.getMonth()]?.[d.getDate()];
+      if (e) { weekClose += e.close||0; weekCalls += e.calls||0; }
+    }
+    // Open pipeline $
+    const { data: openLeads } = await sb.from('ghl_leads')
+      .select('deal,status,date_added,follow_up_date')
+      .eq('assigned_to', m)
+      .neq('status','Closed').neq('status','DQ');
+    let pipeline = 0;
+    (openLeads||[]).forEach(l => {
+      if (l.deal && DEAL_PRICES[l.deal]) pipeline += DEAL_PRICES[l.deal];
+    });
+    // Stale count
+    const fourteen = new Date(); fourteen.setDate(fourteen.getDate()-14);
+    const fourteenIso = fourteen.toISOString();
+    const fourteenDay = fourteen.toISOString().slice(0,10);
+    const stale = (openLeads||[]).filter(l =>
+      (!l.date_added || l.date_added < fourteenIso) &&
+      (!l.follow_up_date || l.follow_up_date < fourteenDay)
+    ).length;
+    // Last activity timestamp
+    const { data: lastAct } = await sb.from('lead_activities')
+      .select('created_at')
+      .eq('actor_email', `${m === 'mateja' ? '' : ''}`)  // We don't track per-rep; skip
+      .order('created_at', { ascending: false }).limit(1);
+    return {
+      member: m, daily: dt, mtd, weekClose, weekCalls, pipeline, stale,
+      callTarget: t.calls, closeTarget: t.close,
+    };
+  }));
+
+  const totalPipeline = repStats.reduce((s,r) => s+r.pipeline, 0);
+  const totalCloseMTD = repStats.reduce((s,r) => s+r.mtd.close, 0);
+  const totalCallToday = repStats.reduce((s,r) => s+(r.daily.calls||0), 0);
+  const totalStale = repStats.reduce((s,r) => s+r.stale, 0);
+
+  const repCards = repStats.map(r => {
+    const color = r.member === 'mateja' ? 'var(--mateja)' : 'var(--dusica)';
+    const callPct = Math.min(100, Math.round(((r.daily.calls||0) / Math.max(1, Math.round(r.callTarget/22))) * 100));
+    const closePct = Math.min(100, Math.round((r.mtd.close / r.closeTarget) * 100));
+    return `<div class="md-rep" style="--rc:${color}">
+      <div class="md-rep-head">
+        <img class="md-rep-av" src="${r.member}.png" alt="${r.member}"/>
+        <div>
+          <div class="md-rep-name">${cap(r.member)}</div>
+          <div class="md-rep-sub">Danas: ${r.daily.calls||0} poziva · ${r.daily.close||0} closes</div>
+        </div>
+      </div>
+      <div class="md-rep-grid">
+        <div class="md-stat">
+          <div class="md-stat-val" style="color:${color}">${r.mtd.close}<span style="font-size:13px;color:var(--muted)">/${r.closeTarget}</span></div>
+          <div class="md-stat-lbl">MTD CLOSE</div>
+          <div class="md-stat-bar"><div class="md-stat-bar-fill" style="width:${closePct}%;background:${color}"></div></div>
+        </div>
+        <div class="md-stat">
+          <div class="md-stat-val">${r.weekClose}</div>
+          <div class="md-stat-lbl">7-dnevni Close</div>
+        </div>
+        <div class="md-stat">
+          <div class="md-stat-val">${r.weekCalls}</div>
+          <div class="md-stat-lbl">7-dnevni Pozivi</div>
+        </div>
+        <div class="md-stat">
+          <div class="md-stat-val" style="color:var(--green)">$${r.pipeline.toLocaleString('sr-RS')}</div>
+          <div class="md-stat-lbl">Open Pipeline</div>
+        </div>
+        <div class="md-stat">
+          <div class="md-stat-val" style="color:${r.stale>5?'var(--red)':r.stale>0?'var(--yellow)':'var(--muted)'}">${r.stale}</div>
+          <div class="md-stat-lbl">Stale leadovi</div>
+        </div>
+        <div class="md-stat">
+          <div class="md-stat-val">${r.daily.calls||0}<span style="font-size:13px;color:var(--muted)">/${Math.round(r.callTarget/22)}</span></div>
+          <div class="md-stat-lbl">Pozivi danas</div>
+          <div class="md-stat-bar"><div class="md-stat-bar-fill" style="width:${callPct}%;background:${color}"></div></div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `<div class="md-wrap">
+    <div class="md-header">
+      <div>
+        <div class="md-title">📊 Pregled tima</div>
+        <div class="md-sub">${new Date().toLocaleDateString('sr-RS',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</div>
+      </div>
+    </div>
+
+    <div class="md-totals">
+      <div class="md-total">
+        <div class="md-total-val">${totalCallToday}</div>
+        <div class="md-total-lbl">Poziva DANAS</div>
+      </div>
+      <div class="md-total">
+        <div class="md-total-val" style="color:var(--green)">${totalCloseMTD}</div>
+        <div class="md-total-lbl">Closes MTD</div>
+      </div>
+      <div class="md-total">
+        <div class="md-total-val" style="color:var(--green)">$${totalPipeline.toLocaleString('sr-RS')}</div>
+        <div class="md-total-lbl">Open Pipeline</div>
+      </div>
+      <div class="md-total">
+        <div class="md-total-val" style="color:${totalStale>10?'var(--red)':totalStale>0?'var(--yellow)':'var(--green)'}">${totalStale}</div>
+        <div class="md-total-lbl">Stale leadovi</div>
+      </div>
+    </div>
+
+    <div class="md-reps">${repCards}</div>
+
+    <div class="md-actions">
+      <button class="md-action-btn" onclick="autoAssignUnassigned().then(showRoundRobinToast)">🎯 Round-robin nedodeljenih</button>
+      <button class="md-action-btn" onclick="autoRecycleFollowUps().then(r=>{showRecycleToast(r); if(!r)alert('Nema stale Follow-Up leadova za reciklažu.');})">🔁 Reciklažu stale FU</button>
+      <button class="md-action-btn" onclick="syncClosedFromSheet({force:true}).then(r=>{showSheetSyncToast(r); if(r&&!r.updated)alert('Sheet već sinhronizovan — nema novih closes.');})">📊 Sync Sheet → CRM</button>
+    </div>
+  </div>`;
+}
+
 /* ── BEST-TIME-TO-CALL HEATMAP ──────────────────────────────────
  * 7x24 grid colored by activity volume. Uses lead_activities
  * timestamps as a proxy for when reps successfully engage leads.
@@ -3442,6 +3686,170 @@ function renderLeadSummary(lead){
       <button class="ai-regen-btn" onclick="generateLeadSummary('${esc(lead.id)}', true)">↻ Regeneriši</button>
     </div>
   `;
+}
+
+/* ─────────────────── AI WHATSAPP MESSAGE ─────────────────────────
+ * Generates a personalized first-touch WhatsApp message in Serbian
+ * via /api/lead-message and opens wa.me with it pre-filled.
+ * ─────────────────────────────────────────────────────────────── */
+async function sendAIMessage(leadId){
+  const lead = (cachedLeads||[]).find(l => l.id === leadId);
+  if (!lead) return;
+  if (!lead.phone) { alert('Nema broja za WhatsApp.'); return; }
+
+  // Inline progress UI on the trigger button
+  const btn = document.querySelector(`[data-ai-msg="${leadId}"]`);
+  if (btn) { btn.innerHTML = '<span class="ai-spinner"></span> Pišem poruku...'; btn.disabled = true; }
+  try {
+    const r = await fetch('/api/lead-message', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lead }),
+    });
+    const json = await r.json();
+    if (!r.ok) {
+      alert('Greška: ' + (json.error || r.status));
+      return;
+    }
+    const phone = cleanPhone(lead.phone).replace(/^\+/, '');
+    if (!phone) { alert('Telefon nije validan.'); return; }
+    const url = `https://wa.me/${phone}?text=${encodeURIComponent(json.message)}`;
+    window.open(url, '_blank', 'noopener');
+    logActivity(leadId, 'note', null, '[AI message] '+json.message.slice(0,140));
+  } catch (e) {
+    alert('Greška: ' + e.message);
+  } finally {
+    if (btn) { btn.innerHTML = '✨ AI Poruka'; btn.disabled = false; }
+  }
+}
+
+/* ─────────────────── CALL OUTCOME LOGGING ─────────────────────────
+ * One-tap quick buttons that log a call outcome to the activity
+ * timeline and (for certain outcomes) update lead status.
+ * ─────────────────────────────────────────────────────────────── */
+async function logCallOutcome(leadId, outcome){
+  const lead = (cachedLeads||[]).find(l => l.id === leadId);
+  if (!lead) return;
+  // Log to activity
+  await logActivity(leadId, 'call', null, outcome);
+  // Auto-status changes based on outcome
+  const statusMap = {
+    'Pogrešan broj': 'DQ',
+    'Javio se': lead.status === 'Novi' ? 'Follow Up' : lead.status,
+  };
+  const newStatus = statusMap[outcome];
+  if (newStatus && newStatus !== lead.status) {
+    await updateLeadStatus(leadId, newStatus);
+  } else {
+    // Just refresh the panel so the timeline shows the new entry
+    if (currentLeadId === leadId) {
+      renderLeadActivityInto('ldpActivityList', leadId);
+    }
+  }
+  // Flash a toast
+  showCallOutcomeToast(lead.name, outcome);
+}
+
+function showCallOutcomeToast(name, outcome){
+  let wrap = document.getElementById('stl-toast-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'stl-toast-wrap'; wrap.className = 'stl-toast-wrap';
+    document.body.appendChild(wrap);
+  }
+  const toast = document.createElement('div');
+  toast.className = 'stl-toast';
+  const ICONS = { 'Javio se':'📞', 'Nije javio':'⏱', 'Govorna pošta':'🎙', 'Pogrešan broj':'❌' };
+  toast.innerHTML = `
+    <div class="stl-toast-icon">${ICONS[outcome] || '📞'}</div>
+    <div class="stl-toast-body">
+      <div class="stl-toast-title">Poziv zabeležen</div>
+      <div class="stl-toast-name">${esc(name||'')}</div>
+      <div class="stl-toast-meta">${esc(outcome)}</div>
+    </div>
+    <div class="stl-toast-close">×</div>
+  `;
+  const dismiss=()=>{toast.classList.add('leaving');setTimeout(()=>toast.remove(),250);};
+  toast.querySelector('.stl-toast-close').onclick=(e)=>{e.stopPropagation();dismiss();};
+  wrap.appendChild(toast); setTimeout(dismiss, 5000);
+}
+
+/* ─────────────────── AUTO-RECYCLE STALE FOLLOW-UPS ────────────────
+ * Leads sitting in "Follow Up" with no activity for 14+ days get
+ * auto-reset to "Novi" and tagged so reps see them again. Runs
+ * once per day via localStorage flag.
+ * ─────────────────────────────────────────────────────────────── */
+const RECYCLE_KEY = 'toc:last-recycle';
+async function autoRecycleFollowUps(){
+  const today = new Date().toISOString().slice(0,10);
+  if (localStorage.getItem(RECYCLE_KEY) === today) return null;
+
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-14);
+  const cutoffIso = cutoff.toISOString();
+
+  // Candidates: status='Follow Up' AND no follow_up_date in future
+  const { data: candidates, error } = await sb.from('ghl_leads')
+    .select('id,name,follow_up_date')
+    .eq('status', 'Follow Up')
+    .or(`follow_up_date.is.null,follow_up_date.lt.${today}`)
+    .limit(1000);
+  if (error || !candidates || !candidates.length) {
+    localStorage.setItem(RECYCLE_KEY, today);
+    return null;
+  }
+
+  // For each candidate, check if there's been any activity in last 14 days.
+  // Batch: fetch activities for these lead_ids since cutoff.
+  const ids = candidates.map(c => c.id);
+  const { data: recent } = await sb.from('lead_activities')
+    .select('lead_id')
+    .in('lead_id', ids)
+    .gte('created_at', cutoffIso);
+  const hasRecent = new Set((recent||[]).map(r => r.lead_id));
+  const toRecycle = candidates.filter(c => !hasRecent.has(c.id));
+  if (!toRecycle.length) {
+    localStorage.setItem(RECYCLE_KEY, today);
+    return null;
+  }
+
+  // Bulk update to status='Novi'
+  const recycleIds = toRecycle.map(c => c.id);
+  const { error: upErr } = await sb.from('ghl_leads')
+    .update({ status: 'Novi' })
+    .in('id', recycleIds);
+  if (!upErr) {
+    recycleIds.forEach(id => logActivity(id, 'status', 'Follow Up', 'Novi'));
+    recycleIds.forEach(id => {
+      const cached = (cachedLeads||[]).find(l => l.id === id);
+      if (cached) cached.status = 'Novi';
+    });
+  }
+  localStorage.setItem(RECYCLE_KEY, today);
+  return { recycled: toRecycle.length };
+}
+
+function showRecycleToast(r){
+  if (!r || !r.recycled) return;
+  let wrap = document.getElementById('stl-toast-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'stl-toast-wrap'; wrap.className = 'stl-toast-wrap';
+    document.body.appendChild(wrap);
+  }
+  const toast = document.createElement('div');
+  toast.className = 'stl-toast';
+  toast.innerHTML = `
+    <div class="stl-toast-icon">🔁</div>
+    <div class="stl-toast-body">
+      <div class="stl-toast-title">Reciklirano</div>
+      <div class="stl-toast-name">${r.recycled} leadova vraćeno u Novi</div>
+      <div class="stl-toast-meta">Sedeli su u Follow Up bez aktivnosti 14+ dana</div>
+    </div>
+    <div class="stl-toast-close">×</div>
+  `;
+  const dismiss=()=>{toast.classList.add('leaving');setTimeout(()=>toast.remove(),250);};
+  toast.querySelector('.stl-toast-close').onclick=(e)=>{e.stopPropagation();dismiss();};
+  wrap.appendChild(toast); setTimeout(dismiss, 9000);
 }
 
 /* ─────────────────── LEAD SCORING ─────────────────────────────────
@@ -4019,8 +4427,10 @@ async function syncLeadsFromGHL(){
     await renderLeadsSection();
     // After GHL sync: auto-distribute unassigned leads round-robin
     autoAssignUnassigned().then(r => showRoundRobinToast(r));
-    // And reconcile sheet → CRM Closed status
+    // Reconcile sheet → CRM Closed status
     syncClosedFromSheet({force:true}).then(r => showSheetSyncToast(r));
+    // Auto-recycle stale Follow-Up leads back to Novi
+    autoRecycleFollowUps().then(r => showRecycleToast(r));
   }catch(e){
     console.error('GHL sync error:',e);
     const msg='Ne mogu da sinhronizujem sa GHL: '+e.message;
@@ -4644,11 +5054,20 @@ function openLeadDetail(id){
     </div>
     ${c.phone?`<div style="margin-bottom:14px">
       <div class="ldp-sec-lbl">Kontakt</div>
+      <div class="ldp-call-outcomes">
+        <button class="ldp-co-btn ldp-co-ans"  onclick="logCallOutcome('${esc(c.id)}','Javio se')">📞 Javio se</button>
+        <button class="ldp-co-btn ldp-co-noans" onclick="logCallOutcome('${esc(c.id)}','Nije javio')">⏱ Nije javio</button>
+        <button class="ldp-co-btn ldp-co-vm"   onclick="logCallOutcome('${esc(c.id)}','Govorna pošta')">🎙 Pošta</button>
+        <button class="ldp-co-btn ldp-co-bad"  onclick="logCallOutcome('${esc(c.id)}','Pogrešan broj')">❌ Pogrešan</button>
+      </div>
       <div class="ldp-contact-actions">
         ${telLink(c.phone)?`<a class="ldp-ca-btn ldp-ca-call" href="${telLink(c.phone)}">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
           Pozovi
         </a>`:''}
+        ${c.phone?`<button class="ldp-ca-btn ldp-ca-ai" data-ai-msg="${esc(c.id)}" onclick="sendAIMessage('${esc(c.id)}')">
+          ✨ AI Poruka
+        </button>`:''}
         ${waLink(c)?`<a class="ldp-ca-btn ldp-ca-wa" href="${waLink(c)}" target="_blank" rel="noopener">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.555-5.338 11.891-11.893 11.891a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.51 5.26l-.999 3.648 3.978-.607zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.711.306 1.265.489 1.697.626.713.226 1.362.194 1.875.118.572-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
           WhatsApp
