@@ -4003,13 +4003,11 @@ function waGreetingFor(lead){
   const firstName = (lead.name || '').split(' ')[0] || '';
   const repName   = lead.assigned_to === 'mateja' ? 'Mateja'
                   : lead.assigned_to === 'dusica' ? 'Dušica' : '';
-  if (firstName && repName) {
-    return `Zdravo ${firstName}, ja sam ${repName} iz Borisovog tima. Kada ti odgovara da se čujemo na 10 min?`;
-  }
-  if (firstName) {
-    return `Zdravo ${firstName}, javljam ti se iz Borisovog tima. Kada ti odgovara da se čujemo?`;
-  }
-  return `Zdravo, javljam ti se iz Borisovog tima.`;
+  const attended  = Array.isArray(lead.tags) && lead.tags.includes('prisustvovao-webinaru');
+  const name = firstName || '';
+  const intro = repName ? `ovde ${repName} iz Borisovog tima` : `javljam ti se iz Borisovog tima`;
+  const middle = attended ? `, vidim da si bio na predavanju u nedelju` : '';
+  return `Ćao ${name}, ${intro}${middle}. Jel imaš sekund?`;
 }
 function waLink(lead){
   const phone = cleanPhone(lead.phone).replace(/^\+/, '');

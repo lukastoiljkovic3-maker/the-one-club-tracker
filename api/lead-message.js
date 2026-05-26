@@ -31,26 +31,30 @@ export default async function handler(req, res) {
   const attended = (lead.tags || []).includes('prisustvovao-webinaru');
   const qualified = (lead.tags || []).some(t => t === 'qualified' || t === 'qualified-webinar');
 
-  const systemPrompt = `Ti pišeš prvu WhatsApp poruku potencijalnom klijentu. Predstavljaš se kao član "Borisovog Tima" (forex trading mentorstvo iz Srbije). Tim prodaje pakete Funded 10K/25K/50K/100K i Bootcamp.
+  const systemPrompt = `Ti generišeš prvu WhatsApp poruku za lead-a koji je bio na PREDAVANJU (NIKAD ne pominji reč "webinar" — uvek "predavanje").
 
-VAŽNO — kako poruka treba da zvuči:
-- Mora da zvuči kao da ju je čovek napisao na telefonu, NE AI bot.
-- Kratko, opušteno, prirodno — kako bi se kucalo prijatelju ili komšiji.
-- Maksimalno 2-3 KRATKE rečenice. NIKAD više.
-- BEZ EMOJI-ja. Nikad. Ni jednog.
-- BEZ velikih reči i fraza tipa "kompleksuješ", "omogućavaju", "optimizacija", "strategija razvoja".
-- BEZ marketing fraza ("zaradi", "uspeh", "potencijal", "transformacija").
-- BEZ "Ej" ili "Hej" na početku — počni sa "Zdravo [ime]" ili samo sa imenom.
-- Pričaj kao Srbin srpskom — koristi "ajde", "može", "kako bi", "ono", "ti" prirodno.
+Format (drži se ovog tačno):
+"Ćao [ime], ovde [rep] iz Borisovog tima, vidim da si bio na predavanju u nedelju. Jel imaš sekund?"
 
-Pravila o sadržaju:
-- Predstavi se: "javljam ti se iz Borisovog tima" ili "ja sam iz Borisovog tima".
-- Ako je prisustvovao webinaru — kratko to pomeni ("video sam da si bio na webinaru").
-- Otvori kratko ime + jedan konkretan detalj iz podataka ako ima.
-- Završi pitanjem koje pokreće razgovor: "kada ti odgovara da se čujemo na 10 min?" ili sl.
-- Ako su podaci slabi — samo se predstavi i pitaj kada može poziv.
+Pravila — STRIKTNO:
+- ISKLJUČIVO srpski, latinica.
+- BEZ EMOJI-ja. Ni jednog.
+- BEZ pominjanja: "Funded", "paketi", "10K", "25K", "Bootcamp", "kapital", "kursevi".
+- BEZ fraza: "kada ti odgovara da se čujemo", "10 min razgovor", "callback".
+- BEZ ponuda, BEZ closing reči, BEZ "zaradi".
+- BEZ velikih obećanja.
+- NIKAD ne pominji reč "webinar" — uvek koristi "predavanje".
 
-Vrati SAMO tekst poruke, bez objašnjenja, bez navodnika, bez prefix-a "Poruka:" — samo poruku spremnu za slanje. Bez potpisa.`;
+Ako je prisustvovao predavanju (tag prisustvovao-webinaru):
+"Ćao [ime], ovde [rep] iz Borisovog tima, vidim da si bio na predavanju u nedelju. Jel imaš sekund?"
+
+Ako NIJE prisustvovao predavanju:
+"Ćao [ime], ovde [rep] iz Borisovog tima. Jel imaš sekund?"
+
+Ako ime nije poznato — preskoči ", [ime]".
+Ako rep nije poznat — koristi "javljam ti se" umesto "ovde [rep]".
+
+Vrati SAMO tekst poruke, bez objašnjenja, bez navodnika, bez potpisa. Maksimalno 2 rečenice.`;
 
   const userPrompt = `Lead:
 Ime: ${firstName || 'nepoznato'}
