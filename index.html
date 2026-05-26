@@ -677,6 +677,19 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .ads-tbl { width:100%;border-collapse:collapse; }
 .ads-tbl thead th { text-align:left;font-size:9px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);padding:12px 16px;border-bottom:1px solid var(--b);white-space:nowrap;background:var(--s1); }
 .ads-tbl thead th.num { text-align:right; }
+.ad-spend-input {
+  width: 80px; padding: 5px 8px; border-radius: 7px;
+  background: var(--s2); border: 1px solid var(--b); color: var(--text);
+  font-family: var(--font); font-size: 12px; font-weight: 700; text-align: right;
+}
+.ad-spend-input:focus { outline: none; border-color: var(--b2); background: var(--s3); }
+.roas-badge {
+  display: inline-block; padding: 3px 8px; border-radius: 99px;
+  font-size: 11px; font-weight: 800; letter-spacing: .3px;
+}
+.roas-good { background: rgba(34,197,94,.14); color: var(--green); }
+.roas-ok   { background: rgba(234,179,8,.14); color: var(--yellow); }
+.roas-bad  { background: rgba(244,63,94,.14); color: var(--red); }
 .ads-tbl tbody td { padding:11px 16px;border-bottom:1px solid var(--b);vertical-align:middle;font-size:12px; }
 .ads-tbl tbody tr:last-child td { border-bottom:none; }
 .ads-tbl tbody tr:hover td { background:var(--s2); }
@@ -949,6 +962,32 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   .ms-sub { font-size:10px; }
   .ms-closer-grid { gap:8px; }
   .ms-closer-val { font-size:26px; }
+}
+
+/* ── HEATMAP ──────────────────────────── */
+.hm-wrap { padding: 14px 4px; }
+.hm-row, .hm-hr-row {
+  display: grid; grid-template-columns: 40px repeat(24, 1fr); gap: 2px; margin-bottom: 2px;
+}
+.hm-hr-row span {
+  font-size: 9px; font-weight: 700; color: var(--muted2);
+  text-align: center; letter-spacing: .3px;
+}
+.hm-day {
+  font-size: 10px; font-weight: 800; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .5px;
+  display: flex; align-items: center; justify-content: flex-end; padding-right: 6px;
+}
+.hm-cell {
+  aspect-ratio: 1 / 1; min-height: 14px; max-height: 22px; border-radius: 3px;
+  background: var(--s3); transition: transform .12s;
+}
+.hm-cell:hover { transform: scale(1.4); z-index: 2; outline: 1px solid var(--text); }
+.hm-legend { display: flex; align-items: center; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+.hm-legend-lbl { font-size: 10px; color: var(--muted2); font-weight: 700; }
+.hm-legend-bar {
+  width: 120px; height: 8px; border-radius: 4px;
+  background: linear-gradient(90deg, var(--s3), rgba(34,197,94,1));
 }
 
 /* ── CONVERSION FUNNEL ─────────────────── */
@@ -2998,6 +3037,8 @@ async function renderMetricsTab(){
 
     <div id="funnel-section"></div>
 
+    <div id="heatmap-section"></div>
+
     ${await renderCommissionSection()}
 
   </div>`;
@@ -3005,6 +3046,69 @@ async function renderMetricsTab(){
   // Init chart after DOM is set
   initTrendChart(chartData);
   renderFunnelSection();
+  renderHeatmapSection();
+}
+
+/* ── BEST-TIME-TO-CALL HEATMAP ──────────────────────────────────
+ * 7x24 grid colored by activity volume. Uses lead_activities
+ * timestamps as a proxy for when reps successfully engage leads.
+ * Filtered to action_type IN (status, followup, note) to focus on
+ * "real touchpoints" rather than passive activity.
+ * ─────────────────────────────────────────────────────────────── */
+async function renderHeatmapSection(){
+  const host = document.getElementById('heatmap-section');
+  if (!host) return;
+  host.innerHTML = `<div class="metrics-sec">
+    <div class="metrics-sec-lbl">NAJBOLJE VREME ZA POZIV — Heatmap aktivnosti</div>
+    <div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">⏳ Učitavam...</div>
+  </div>`;
+  // Last 90 days of touch activity
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-90);
+  const { data, error } = await sb.from('lead_activities')
+    .select('created_at,action_type,new_value')
+    .gte('created_at', cutoff.toISOString())
+    .in('action_type', ['status','followup','note'])
+    .limit(20000);
+  if (error) {
+    host.innerHTML = `<div class="metrics-sec"><div class="metrics-sec-lbl">NAJBOLJE VREME ZA POZIV — Heatmap aktivnosti</div><div style="padding:24px;color:var(--red);font-size:12px;text-align:center">${esc(error.message)}</div></div>`;
+    return;
+  }
+  const grid = Array.from({length:7}, () => Array(24).fill(0));
+  let pickupGrid = Array.from({length:7}, () => Array(24).fill(0));
+  (data||[]).forEach(a => {
+    const d = new Date(a.created_at);
+    const dow = (d.getDay() + 6) % 7;  // Mon=0..Sun=6
+    const hr  = d.getHours();
+    grid[dow][hr]++;
+    if (a.action_type === 'status' && (a.new_value === 'Follow Up' || a.new_value === 'Closed')) {
+      pickupGrid[dow][hr]++;
+    }
+  });
+  const max = Math.max(1, ...grid.flat());
+  const days = ['Pon','Uto','Sre','Čet','Pet','Sub','Ned'];
+  const cells = [];
+  for (let d = 0; d < 7; d++) {
+    cells.push(`<div class="hm-row"><div class="hm-day">${days[d]}</div>${grid[d].map((v,h) => {
+      const intensity = v / max;
+      const successRate = v > 0 ? Math.round((pickupGrid[d][h]/v)*100) : 0;
+      const bg = v === 0 ? 'transparent' : `rgba(34,197,94,${Math.max(0.06, intensity)})`;
+      return `<div class="hm-cell" style="background:${bg}" title="${days[d]} ${h}:00 · ${v} aktivnosti · ${successRate}% pickup"></div>`;
+    }).join('')}</div>`);
+  }
+  const hrLabels = [];
+  for (let h = 0; h < 24; h++) hrLabels.push(`<span>${h%6===0?h:''}</span>`);
+  host.innerHTML = `<div class="metrics-sec">
+    <div class="metrics-sec-lbl">NAJBOLJE VREME ZA POZIV — Heatmap aktivnosti</div>
+    <div class="hm-wrap">
+      <div class="hm-hr-row"><div class="hm-day"></div>${hrLabels.join('')}</div>
+      ${cells.join('')}
+      <div class="hm-legend">
+        <span class="hm-legend-lbl">Manje</span>
+        <div class="hm-legend-bar"></div>
+        <span class="hm-legend-lbl">Više aktivnosti</span>
+      </div>
+    </div>
+  </div>`;
 }
 
 /* ── CONVERSION FUNNEL ───────────────────────────────────────────
@@ -3712,15 +3816,38 @@ async function loadCampaignData(){
     const hasUtm=!!(r.utm_campaign||r.utm_content||r.utm_source);
     const key=hasUtm?(content||'').toLowerCase()||'no-content':'organic';
     if(!map[key]) map[key]={
+      key,
       content:hasUtm?(content||'Nepoznat oglas'):'Organic / Direct',
       campaign:hasUtm?fmtCampaign(r.utm_campaign):'',
       source:(r.utm_source||'').toLowerCase().replace(/^ig$/,'instagram'),
-      leads:0, closes:0
+      leads:0, closes:0, revenue: 0
     };
     map[key].leads++;
-    if(r.status==='Closed') map[key].closes++;
+    if(r.status==='Closed') {
+      map[key].closes++;
+      const price = r.deal && DEAL_PRICES[r.deal];
+      if (price) map[key].revenue += price;
+    }
   });
   return Object.values(map).sort((a,b)=>b.leads-a.leads);
+}
+
+// Ad spend persisted in localStorage by campaign key.
+const AD_SPEND_KEY = 'toc:ad-spend';
+function loadAdSpend(){
+  try { return JSON.parse(localStorage.getItem(AD_SPEND_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveAdSpend(key, amount){
+  const all = loadAdSpend();
+  const n = Number(amount);
+  if (!n || n <= 0) delete all[key]; else all[key] = n;
+  localStorage.setItem(AD_SPEND_KEY, JSON.stringify(all));
+}
+function updateAdSpendCell(key, amount){
+  saveAdSpend(key, amount);
+  // Re-render to refresh CPL/CPC/ROAS columns
+  renderAdsView();
 }
 
 async function renderAdsView(){
@@ -3732,10 +3859,16 @@ async function renderAdsView(){
     return `<span class="src-pill ${cls}">${s||'organic'}</span>`;
   };
   const syncSvg=`<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2v6h-6"/><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M3 22v-6h6"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/></svg>`;
+  const spendMap = loadAdSpend();
   const rows=campaigns.map(c=>{
     const cvr=c.leads?Math.round(c.closes/c.leads*100):0;
     const cvrCls=cvr>=10?'cvr-high':cvr>=5?'cvr-mid':'cvr-low';
     const barW=Math.round(c.leads/maxLeads*100);
+    const spend = spendMap[c.key] || 0;
+    const cpl   = (spend && c.leads)  ? Math.round(spend / c.leads)  : 0;
+    const cpc   = (spend && c.closes) ? Math.round(spend / c.closes) : 0;
+    const roas  = (spend && c.revenue) ? (c.revenue / spend).toFixed(2) : null;
+    const roasCls = !roas ? '' : Number(roas) >= 2 ? 'roas-good' : Number(roas) >= 1 ? 'roas-ok' : 'roas-bad';
     return `<tr>
       <td><div class="cam-name">${esc(c.content)}</div><div class="cam-sub">${esc(c.campaign)}</div></td>
       <td>${srcPill(c.source)}</td>
@@ -3743,12 +3876,19 @@ async function renderAdsView(){
       <td><div class="ads-bar"><div class="ads-bar-fill" style="width:${barW}%"></div></div></td>
       <td class="num">${c.closes}</td>
       <td class="num"><span class="cvr-badge ${cvrCls}">${cvr}%</span></td>
+      <td class="num"><input type="number" class="ad-spend-input" min="0" step="10" value="${spend||''}" placeholder="0" onblur="updateAdSpendCell('${esc(c.key)}',this.value)" onclick="event.stopPropagation()" /></td>
+      <td class="num">${cpl?'$'+cpl.toLocaleString('sr-RS'):'—'}</td>
+      <td class="num">${cpc?'$'+cpc.toLocaleString('sr-RS'):'—'}</td>
+      <td class="num">${roas?`<span class="roas-badge ${roasCls}">${roas}×</span>`:'—'}</td>
     </tr>`;
-  }).join('')||`<tr><td colspan="6" style="padding:48px 20px;text-align:center;color:var(--muted);font-size:13px;font-weight:700">Nema podataka — prvo sinhronizuj GHL</td></tr>`;
+  }).join('')||`<tr><td colspan="10" style="padding:48px 20px;text-align:center;color:var(--muted);font-size:13px;font-weight:700">Nema podataka — prvo sinhronizuj GHL</td></tr>`;
 
   const total=campaigns.reduce((s,c)=>s+c.leads,0);
   const totalCloses=campaigns.reduce((s,c)=>s+c.closes,0);
   const totalCvr=total?Math.round(totalCloses/total*100):0;
+  const totalSpend = campaigns.reduce((s,c)=>s+(spendMap[c.key]||0),0);
+  const totalRev   = campaigns.reduce((s,c)=>s+(c.revenue||0),0);
+  const totalRoas  = totalSpend ? (totalRev/totalSpend).toFixed(2) : null;
 
   el.innerHTML=`<div style="width:100%">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
@@ -3769,6 +3909,18 @@ async function renderAdsView(){
           <div style="font-size:22px;font-weight:900;color:${totalCvr>=10?'var(--green)':totalCvr>=5?'var(--yellow)':'var(--red)'}">${totalCvr}%</div>
           <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-top:2px">CVR</div>
         </div>
+        ${totalSpend?`<div style="background:var(--s2);border:1px solid var(--b);border-radius:12px;padding:14px 20px;min-width:100px;">
+          <div style="font-size:22px;font-weight:900;color:var(--red)">$${totalSpend.toLocaleString('sr-RS')}</div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-top:2px">Ad spend</div>
+        </div>`:''}
+        ${totalRev?`<div style="background:var(--s2);border:1px solid var(--b);border-radius:12px;padding:14px 20px;min-width:100px;">
+          <div style="font-size:22px;font-weight:900;color:var(--green)">$${totalRev.toLocaleString('sr-RS')}</div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-top:2px">Revenue</div>
+        </div>`:''}
+        ${totalRoas?`<div style="background:var(--s2);border:1px solid var(--b);border-radius:12px;padding:14px 20px;min-width:100px;">
+          <div style="font-size:22px;font-weight:900;color:${Number(totalRoas)>=2?'var(--green)':Number(totalRoas)>=1?'var(--yellow)':'var(--red)'}">${totalRoas}×</div>
+          <div style="font-size:9px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-top:2px">ROAS</div>
+        </div>`:''}
       </div>
       <div style="display:flex;gap:8px;align-items:center;">
         <button class="ads-view-btn active" onclick="toggleAdsView()">← Nazad na Leads</button>
@@ -3784,6 +3936,10 @@ async function renderAdsView(){
           <th style="min-width:80px"></th>
           <th class="num">Zatvoreni</th>
           <th class="num">CVR</th>
+          <th class="num">Spend ($)</th>
+          <th class="num">CPL</th>
+          <th class="num">CPC</th>
+          <th class="num">ROAS</th>
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>
@@ -4467,7 +4623,34 @@ async function updateLeadStatus(id,status){
       if(currentLeadId===id)openLeadDetail(id);
     }
     logActivity(id,'status',oldStatus,status);
+    // Two-way sync: push corresponding tag to GHL
+    pushStatusToGHL(id, oldStatus, status);
   }
+}
+
+// Map tracker status to GHL tags. Each status maps to a single tag;
+// switching status removes the old tag and adds the new one.
+const STATUS_TAG_MAP = {
+  'Novi':      'tracker-novi',
+  'Follow Up': 'tracker-followup',
+  'Closed':    'tracker-closed',
+  'DQ':        'tracker-dq',
+};
+async function pushStatusToGHL(contactId, oldStatus, newStatus){
+  if (!contactId || oldStatus === newStatus) return;
+  const removeTag = STATUS_TAG_MAP[oldStatus];
+  const addTag    = STATUS_TAG_MAP[newStatus];
+  const payload = { contactId };
+  if (addTag)    payload.addTags    = [addTag];
+  if (removeTag && removeTag !== addTag) payload.removeTags = [removeTag];
+  if (!payload.addTags && !payload.removeTags) return;
+  try {
+    await fetch('/api/ghl-update', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+  } catch (e) { /* non-fatal */ }
 }
 
 async function updateLeadDeal(id,deal){
