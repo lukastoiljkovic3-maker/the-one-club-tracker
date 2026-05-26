@@ -383,6 +383,36 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .stale-banner-title { font-size:13px; font-weight:800; color:var(--red); }
 .stale-banner-sub   { font-size:11px; color:var(--muted); margin-top:2px; }
 .stale-banner-count { font-size:28px; font-weight:900; color:var(--red); letter-spacing:-1px; }
+
+.dupe-banner {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 18px; border-radius:12px; cursor:pointer;
+  background:rgba(234,179,8,.06); border:1px solid rgba(234,179,8,.22);
+  transition: background .15s, border-color .15s;
+}
+.dupe-banner:hover { background:rgba(234,179,8,.10); border-color:rgba(234,179,8,.35); }
+.dupe-banner-icon { font-size:18px; flex-shrink:0; }
+.dupe-banner-text { flex:1; }
+.dupe-banner-title { font-size:12px; font-weight:800; color:var(--yellow); }
+.dupe-banner-sub { font-size:11px; color:var(--muted); margin-top:2px; }
+.dupe-banner-count { font-size:22px; font-weight:900; color:var(--yellow); }
+
+.ldp-snooze-row { display:flex; gap:6px; flex-wrap:wrap; }
+.ldp-snooze-btn {
+  background:var(--s2); border:1px solid var(--b); color:var(--text);
+  padding:8px 12px; font-size:11px; font-weight:700; border-radius:8px;
+  cursor:pointer; transition:all .12s; font-family:inherit;
+}
+.ldp-snooze-btn:hover { border-color:var(--yellow); color:var(--yellow); }
+.ldp-snooze-btn.ldp-snooze-clear:hover { border-color:var(--red); color:var(--red); }
+
+.snooze-toggle {
+  display: inline-block; padding: 6px 12px; border-radius: 99px;
+  font-size: 11px; font-weight: 700; color: var(--muted); cursor: pointer;
+  background: var(--s2); border: 1px solid var(--b);
+  transition: all .12s;
+}
+.snooze-toggle:hover { color: var(--text); border-color: var(--b2); }
 .fu-today-banner-icon { font-size:20px; flex-shrink:0; }
 .fu-today-banner-text { flex:1; }
 .fu-today-banner-title { font-size:13px; font-weight:800; color:var(--yellow); }
@@ -2062,6 +2092,7 @@ async function signOut() {
       currentUserEmail = session.user.email || null;
       stlStart();
       startCloseCelebrations();
+      installKeyboardShortcuts();
     } else {
       showAuthGate();
       setHeaderUser(null);
@@ -3680,6 +3711,100 @@ function showCloseCelebration(leadName, rep){
   setTimeout(dismiss, 10000);
 }
 
+/* ─────────────────── KEYBOARD SHORTCUTS ───────────────────────────
+ * '/'         → focus the Leads search input (Gmail-style).
+ * ArrowLeft/ArrowRight (when detail panel open) → prev/next lead.
+ * Esc         → close detail panel (handled elsewhere).
+ * ─────────────────────────────────────────────────────────────── */
+let _kbShortcutsInstalled = false;
+function installKeyboardShortcuts(){
+  if (_kbShortcutsInstalled) return;
+  _kbShortcutsInstalled = true;
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target?.tagName || '').toLowerCase();
+    const inField = ['input','textarea','select'].includes(tag) || e.target?.isContentEditable;
+    // '/' to focus search
+    if (e.key === '/' && !inField && !e.metaKey && !e.ctrlKey) {
+      const search = document.querySelector('.leads-search');
+      if (search) { e.preventDefault(); search.focus(); search.select?.(); }
+      return;
+    }
+    // Arrow nav when detail panel is open
+    if (currentLeadId && (e.key === 'ArrowLeft' || e.key === 'ArrowRight') && !inField) {
+      const { leads } = computeLeads();
+      const idx = leads.findIndex(l => l.id === currentLeadId);
+      if (idx === -1) return;
+      const next = e.key === 'ArrowRight'
+        ? (idx + 1 < leads.length ? leads[idx+1] : null)
+        : (idx > 0 ? leads[idx-1] : null);
+      if (next) { e.preventDefault(); openLeadDetail(next.id); }
+    }
+  });
+}
+
+/* ─────────────────── DUPLICATE DETECTOR ───────────────────────────
+ * Scans cachedLeads for leads sharing the same phone or email.
+ * Returns groups of 2+ leads with the matching identifier.
+ * ─────────────────────────────────────────────────────────────── */
+function findLeadDuplicates(){
+  const byPhone = new Map(), byEmail = new Map();
+  (cachedLeads||[]).forEach(l => {
+    if (l.phone) {
+      const p = String(l.phone).replace(/[^\d]/g,'');
+      if (p.length >= 7) {
+        if (!byPhone.has(p)) byPhone.set(p, []);
+        byPhone.get(p).push(l);
+      }
+    }
+    if (l.email) {
+      const e = String(l.email).trim().toLowerCase();
+      if (e) {
+        if (!byEmail.has(e)) byEmail.set(e, []);
+        byEmail.get(e).push(l);
+      }
+    }
+  });
+  const groups = [];
+  byPhone.forEach((v,k) => { if (v.length > 1) groups.push({ type:'phone', key:k, leads:v }); });
+  byEmail.forEach((v,k) => { if (v.length > 1) groups.push({ type:'email', key:k, leads:v }); });
+  return groups;
+}
+
+/* ─────────────────── SNOOZE ──────────────────────────────────────
+ * Stores per-lead "hide until" date in localStorage. Snoozed leads
+ * are hidden from the default leads view unless explicitly toggled.
+ *
+ * Requires this Supabase SQL (optional — falls back to localStorage):
+ *   alter table ghl_leads add column if not exists snoozed_until date;
+ * ─────────────────────────────────────────────────────────────── */
+const SNOOZE_KEY = 'toc:snoozed';
+let leadsShowSnoozed = false;
+function loadSnoozeMap(){
+  try { return JSON.parse(localStorage.getItem(SNOOZE_KEY) || '{}'); }
+  catch { return {}; }
+}
+function saveSnoozeMap(m){ localStorage.setItem(SNOOZE_KEY, JSON.stringify(m)); }
+function isSnoozed(leadId){
+  const today = new Date().toISOString().slice(0,10);
+  const m = loadSnoozeMap();
+  return m[leadId] && m[leadId] > today;
+}
+async function snoozeLead(leadId, untilDate){
+  const m = loadSnoozeMap();
+  if (untilDate) m[leadId] = untilDate; else delete m[leadId];
+  saveSnoozeMap(m);
+  // Try to persist to Supabase too (no-op if column missing)
+  try { await sb.from('ghl_leads').update({ snoozed_until: untilDate || null }).eq('id', leadId); }
+  catch {}
+  logActivity(leadId, 'snooze', null, untilDate || null);
+  refreshLeadRows();
+  if (currentLeadId === leadId) openLeadDetail(leadId);
+}
+function toggleShowSnoozed(){
+  leadsShowSnoozed = !leadsShowSnoozed;
+  renderLeads(cachedLeads);
+}
+
 function stlStart(){
   if (_stlTimer) return;
   _stlSeen = stlLoadSeenFromStorage() || new Set();
@@ -4035,6 +4160,9 @@ function computeLeads(){
   if(leadsTagFilter){
     searched=searched.filter(l=>Array.isArray(l.tags)&&l.tags.includes(leadsTagFilter));
   }
+  if(!leadsShowSnoozed){
+    searched=searched.filter(l=>!isSnoozed(l.id));
+  }
   if(leadsShowStale){
     // Stale = open AND created >14d ago AND no upcoming follow-up
     const fourteenDaysAgo=new Date(); fourteenDaysAgo.setDate(fourteenDaysAgo.getDate()-14);
@@ -4270,6 +4398,15 @@ function renderLeads(all){
       <div class="stale-banner-count">${staleLeads.length}</div>
     </div>`:''}
 
+    ${(()=>{const dupes=findLeadDuplicates();return dupes.length?`<div class="dupe-banner" style="margin-bottom:16px" onclick="alert('Pronađeno ${dupes.length} grupa duplikata.\\n\\n'+${JSON.stringify(dupes.slice(0,8).map(g=>`${g.type==='phone'?'📱':'📧'} ${g.key} → ${g.leads.map(l=>l.name||'?').join(', ')}`).join('\\n'))})">
+      <div class="dupe-banner-icon">⚠️</div>
+      <div class="dupe-banner-text">
+        <div class="dupe-banner-title">Mogući duplikati</div>
+        <div class="dupe-banner-sub">${dupes.length} ${dupes.length===1?'grupa lead-ova':'grupe lead-ova'} sa istim telefonom/emailom · klikni za detalje</div>
+      </div>
+      <div class="dupe-banner-count">${dupes.length}</div>
+    </div>`:'';})()}
+
     <div class="leads-stat-bar">
       <button class="lsb-btn tab-all ${leadsSubTab==='all'?'active':''}" onclick="setLeadsSubTab('all')">
         <span class="lsb-count">${total}</span><span class="lsb-label">Svi</span>
@@ -4323,6 +4460,7 @@ function renderLeads(all){
       <div class="pipeline-cell"><span class="pipeline-lbl">Pipeline (open)</span><span class="pipeline-val">$${pv.open.toLocaleString('sr-RS')}</span></div>
       <div class="pipeline-cell"><span class="pipeline-lbl">Zatvoreno</span><span class="pipeline-val" style="color:var(--green)">$${pv.closed.toLocaleString('sr-RS')}</span></div>
     </div>`:'';})()}
+    ${(()=>{const sm=loadSnoozeMap();const today=new Date().toISOString().slice(0,10);const n=Object.values(sm).filter(d=>d>today).length;return n?`<div class="snooze-toggle" onclick="toggleShowSnoozed()" style="margin-bottom:12px">${leadsShowSnoozed?'👁':'😴'} ${leadsShowSnoozed?`Prikazujem ${n} snoozed lead-ova · klikni da sakriješ`:`${n} snoozed lead-ova sakriveno · klikni da prikažeš`}</div>`:'';})()}
 
     <div class="leads-tbl-wrap">
       <table class="leads-tbl">
@@ -4405,6 +4543,15 @@ function openLeadDetail(id){
         <svg class="ldp-fu-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         <input type="date" class="ldp-fu-native" value="${c.follow_up_date||''}" onclick="event.stopPropagation();try{this.showPicker()}catch(e){}" onchange="updateLeadFollowUpPanel('${esc(c.id)}',this.value,this)" />
       </button>
+    </div>
+    <div>
+      <div class="ldp-sec-lbl">Snooze ${isSnoozed(c.id)?`<span style="color:var(--yellow);font-weight:700;text-transform:none;letter-spacing:.3px">do ${new Date((loadSnoozeMap()[c.id])+'T00:00').toLocaleDateString('sr-RS')}</span>`:''}</div>
+      <div class="ldp-snooze-row">
+        <button class="ldp-snooze-btn" onclick="snoozeLead('${esc(c.id)}', (function(){const d=new Date();d.setDate(d.getDate()+3);return d.toISOString().slice(0,10);})())">3 dana</button>
+        <button class="ldp-snooze-btn" onclick="snoozeLead('${esc(c.id)}', (function(){const d=new Date();d.setDate(d.getDate()+7);return d.toISOString().slice(0,10);})())">1 nedelja</button>
+        <button class="ldp-snooze-btn" onclick="snoozeLead('${esc(c.id)}', (function(){const d=new Date();d.setMonth(d.getMonth()+1);return d.toISOString().slice(0,10);})())">1 mesec</button>
+        ${isSnoozed(c.id)?`<button class="ldp-snooze-btn ldp-snooze-clear" onclick="snoozeLead('${esc(c.id)}', null)">Otkaži snooze</button>`:''}
+      </div>
     </div>
     ${fields.length?`<div>
       <div class="ldp-sec-lbl">Kvalifikacija</div>
