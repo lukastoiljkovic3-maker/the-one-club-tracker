@@ -1040,6 +1040,78 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
   .ms-closer-val { font-size:26px; }
 }
 
+/* ── AI SCENARIO DROPDOWN ──────────────── */
+.ldp-ai-group { display: flex; gap: 1px; }
+.ldp-ai-group .ldp-ca-ai { border-radius: 11px 0 0 11px; flex: 1; }
+.ldp-ai-group .ldp-ca-ai-caret {
+  border-radius: 0 11px 11px 0; padding: 12px 10px; flex: 0 0 auto;
+  font-size: 14px; min-width: 36px;
+}
+.ai-scenario-menu {
+  position: absolute; z-index: 9500;
+  background: var(--s1); border: 1px solid var(--b2); border-radius: 12px;
+  box-shadow: 0 14px 38px rgba(0,0,0,.5);
+  min-width: 260px; max-width: 320px;
+  padding: 6px;
+  animation: fade-in-up .15s ease-out;
+}
+.ai-scenario-item {
+  padding: 10px 12px; border-radius: 9px; cursor: pointer;
+  transition: background .12s;
+}
+.ai-scenario-item:hover { background: rgba(168,85,247,.10); }
+.ai-scenario-label { font-size: 13px; font-weight: 700; color: var(--text); }
+.ai-scenario-hint  { font-size: 11px; color: var(--muted); margin-top: 2px; }
+@keyframes fade-in-up {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── FIRST-RESPONSE WAITING BANNER ────── */
+.wait-banner {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 18px; border-radius: 12px; cursor: pointer;
+  background: rgba(244,63,94,.08); border: 1px solid rgba(244,63,94,.3);
+  transition: background .15s, border-color .15s;
+}
+.wait-banner:hover { background: rgba(244,63,94,.14); border-color: rgba(244,63,94,.5); }
+.wait-banner-icon { font-size: 20px; flex-shrink: 0; }
+.wait-banner-text { flex: 1; }
+.wait-banner-title { font-size: 13px; font-weight: 800; color: var(--red); }
+.wait-banner-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.wait-banner-count { font-size: 28px; font-weight: 900; color: var(--red); letter-spacing: -1px; }
+
+/* ── TIME TO CLOSE ─────────────────────── */
+.ttc-wrap { display: flex; flex-direction: column; gap: 8px; padding: 8px 0; }
+.ttc-row {
+  display: grid; grid-template-columns: 130px 1fr 80px 80px;
+  align-items: center; gap: 12px; padding: 6px 0;
+}
+.ttc-row-label { font-size: 12px; font-weight: 800; }
+.ttc-row-bar { height: 10px; background: var(--s3); border-radius: 99px; overflow: hidden; }
+.ttc-row-fill { height: 100%; border-radius: 99px; transition: width .5s cubic-bezier(.16,1,.3,1); }
+.ttc-row-val { font-size: 14px; font-weight: 900; color: var(--text); }
+.ttc-row-count { font-size: 11px; color: var(--muted); text-align: right; }
+@media (max-width: 600px) {
+  .ttc-row { grid-template-columns: 90px 1fr 60px; }
+  .ttc-row-count { display: none; }
+}
+
+/* ── AI INSIGHTS ───────────────────────── */
+.insights-body {
+  padding: 16px 18px; font-size: 13px; line-height: 1.6;
+  background: linear-gradient(135deg, rgba(168,85,247,.06), rgba(168,85,247,.01));
+  border: 1px solid rgba(168,85,247,.2); border-radius: 12px;
+}
+.insights-body strong { color: var(--mateja); font-size: 12px; letter-spacing: .8px; text-transform: uppercase; display: block; margin: 10px 0 6px; }
+.insights-body strong:first-child { margin-top: 0; }
+.insight-bullet { padding: 3px 0; color: var(--text); }
+.insight-spacer { height: 8px; }
+.insights-foot {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(168,85,247,.18);
+}
+
 /* ── MANAGER DASHBOARD ──────────────── */
 .md-wrap { display: flex; flex-direction: column; gap: 18px; }
 .md-header { display: flex; justify-content: space-between; align-items: center; }
@@ -3216,6 +3288,10 @@ async function renderMetricsTab(){
 
     <div id="heatmap-section"></div>
 
+    <div id="time-to-close-section"></div>
+
+    <div id="ai-insights-section"></div>
+
     ${await renderCommissionSection()}
 
   </div>`;
@@ -3224,6 +3300,190 @@ async function renderMetricsTab(){
   initTrendChart(chartData);
   renderFunnelSection();
   renderHeatmapSection();
+  renderTimeToCloseSection();
+  renderAIInsightsSection();
+}
+
+/* ── TIME-TO-CLOSE ─────────────────────────────────────────────
+ * Median days from date_added → first 'Closed' activity, grouped
+ * by lead_type (= source bucket). Uses lead_activities timestamps
+ * so it reflects when the rep actually closed, not when GHL synced.
+ * ─────────────────────────────────────────────────────────────── */
+async function renderTimeToCloseSection(){
+  const host = document.getElementById('time-to-close-section');
+  if (!host) return;
+  host.innerHTML = `<div class="metrics-sec">
+    <div class="metrics-sec-lbl">VREME DO ZATVARANJA — Po izvoru</div>
+    <div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">⏳ Učitavam...</div>
+  </div>`;
+
+  // 1) Get all closed leads + their lead_type
+  const { data: closed } = await sb.from('ghl_leads')
+    .select('id,date_added,lead_type,assigned_to')
+    .eq('status','Closed')
+    .limit(5000);
+  if (!closed || !closed.length) {
+    host.innerHTML = `<div class="metrics-sec"><div class="metrics-sec-lbl">VREME DO ZATVARANJA</div><div style="padding:24px;text-align:center;color:var(--muted);font-size:12px">Nema zatvorenih leadova još.</div></div>`;
+    return;
+  }
+  const closedIds = closed.map(l => l.id);
+  // 2) Get the timestamp when each lead first got status='Closed' from activity log
+  const { data: acts } = await sb.from('lead_activities')
+    .select('lead_id,new_value,created_at')
+    .in('lead_id', closedIds)
+    .eq('action_type', 'status')
+    .eq('new_value', 'Closed')
+    .order('created_at', { ascending: true });
+  const closedAt = new Map();
+  (acts||[]).forEach(a => {
+    if (!closedAt.has(a.lead_id)) closedAt.set(a.lead_id, new Date(a.created_at).getTime());
+  });
+
+  // Build by-source + by-rep buckets
+  const bySource = {}, byRep = {};
+  closed.forEach(l => {
+    if (!l.date_added) return;
+    const closeT = closedAt.get(l.id);
+    if (!closeT) return;
+    const days = Math.round((closeT - new Date(l.date_added).getTime()) / 86400000);
+    if (days < 0 || days > 365) return;
+    const s = l.lead_type || 'other';
+    if (!bySource[s]) bySource[s] = [];
+    bySource[s].push(days);
+    if (l.assigned_to) {
+      if (!byRep[l.assigned_to]) byRep[l.assigned_to] = [];
+      byRep[l.assigned_to].push(days);
+    }
+  });
+
+  const median = arr => { if (!arr.length) return null; const s=[...arr].sort((a,b)=>a-b); return s[Math.floor(s.length/2)]; };
+  const labelMap = {
+    qualified: 'Qualified',
+    webinar_lead: 'Webinar Lead',
+    webinar_attended: 'Prisustvovao',
+    lead_magnet: 'Lead Magnet',
+    disqualified: 'Disqualified',
+    other: 'Ostalo',
+  };
+  const colorMap = {
+    qualified:'#3b82f6', webinar_lead:'#a855f7', webinar_attended:'#10b981',
+    lead_magnet:'#eab308', disqualified:'#f43f5e', other:'#94a3b8',
+  };
+
+  const sourceRows = Object.entries(bySource)
+    .sort((a,b) => b[1].length - a[1].length)
+    .map(([k, arr]) => {
+      const m = median(arr);
+      const color = colorMap[k] || '#94a3b8';
+      return `<div class="ttc-row">
+        <div class="ttc-row-label" style="color:${color}">${labelMap[k] || k}</div>
+        <div class="ttc-row-bar"><div class="ttc-row-fill" style="width:${Math.min(100, m*3)}%;background:${color}"></div></div>
+        <div class="ttc-row-val">${m} ${m===1?'dan':'dana'}</div>
+        <div class="ttc-row-count">${arr.length} closes</div>
+      </div>`;
+    }).join('');
+
+  const repRows = Object.entries(byRep).map(([rep, arr]) => {
+    const m = median(arr);
+    const color = rep === 'mateja' ? 'var(--mateja)' : rep === 'dusica' ? 'var(--dusica)' : '#94a3b8';
+    return `<div class="ttc-row">
+      <div class="ttc-row-label" style="color:${color}">${cap(rep)}</div>
+      <div class="ttc-row-bar"><div class="ttc-row-fill" style="width:${Math.min(100, m*3)}%;background:${color}"></div></div>
+      <div class="ttc-row-val">${m} ${m===1?'dan':'dana'}</div>
+      <div class="ttc-row-count">${arr.length} closes</div>
+    </div>`;
+  }).join('');
+
+  host.innerHTML = `<div class="metrics-sec">
+    <div class="metrics-sec-lbl">VREME DO ZATVARANJA — Median po izvoru</div>
+    <div class="ttc-wrap">${sourceRows || '<div style="padding:18px;color:var(--muted);font-size:12px;text-align:center">Nedovoljno aktivnosti — pokreni Sinhronizuj GHL.</div>'}</div>
+    ${repRows ? `<div class="metrics-sec-lbl" style="margin-top:18px">PO PRODAVCU</div><div class="ttc-wrap">${repRows}</div>` : ''}
+  </div>`;
+}
+
+/* ── AI INSIGHTS (win/loss patterns) ────────────────────────────
+ * Sends a curated sample of Closed + DQ leads to Claude and
+ * renders the resulting patterns. Cached in localStorage for 24h
+ * to avoid burning tokens on every Metrics tab open.
+ * ─────────────────────────────────────────────────────────────── */
+const INSIGHTS_CACHE_KEY = 'toc:insights';
+
+async function renderAIInsightsSection(){
+  const host = document.getElementById('ai-insights-section');
+  if (!host) return;
+
+  const cached = (() => {
+    try {
+      const raw = localStorage.getItem(INSIGHTS_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      if (Date.now() - parsed.ts > 24*3600*1000) return null;
+      return parsed;
+    } catch { return null; }
+  })();
+
+  if (cached?.insights) {
+    renderInsightsContent(host, cached.insights, cached.ts);
+    return;
+  }
+
+  host.innerHTML = `<div class="metrics-sec">
+    <div class="metrics-sec-lbl">AI ZAKLJUČCI — Šta radi, šta ne radi</div>
+    <div style="padding:20px;text-align:center">
+      <button class="ai-gen-btn" onclick="generateAIInsights()">✨ Pokreni AI analizu</button>
+      <div style="font-size:10px;color:var(--muted2);margin-top:8px">Claude će uporediti Closed vs DQ leadove i naći obrasce. Rezultat je keširan 24h.</div>
+    </div>
+  </div>`;
+}
+
+async function generateAIInsights(){
+  const host = document.getElementById('ai-insights-section');
+  if (!host) return;
+  host.innerHTML = `<div class="metrics-sec">
+    <div class="metrics-sec-lbl">AI ZAKLJUČCI — Šta radi, šta ne radi</div>
+    <div style="padding:24px;text-align:center;color:var(--muted);font-size:13px"><span class="ai-spinner" style="margin-right:8px"></span> Claude analizira pattern-e...</div>
+  </div>`;
+
+  const cols = 'experience,knowledge,time_frame,pain_point,qualification,lead_type,tags';
+  const [closedR, dqR] = await Promise.all([
+    sb.from('ghl_leads').select(cols).eq('status','Closed').limit(80),
+    sb.from('ghl_leads').select(cols).eq('status','DQ').limit(80),
+  ]);
+
+  try {
+    const r = await fetch('/api/lead-insights', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ closed: closedR.data || [], dq: dqR.data || [] }),
+    });
+    const json = await r.json();
+    if (!r.ok) {
+      host.innerHTML = `<div class="metrics-sec"><div class="metrics-sec-lbl">AI ZAKLJUČCI</div><div style="padding:18px;color:var(--red);font-size:12px">${esc(json.error || r.status)}</div></div>`;
+      return;
+    }
+    const payload = { insights: json.insights, ts: Date.now() };
+    localStorage.setItem(INSIGHTS_CACHE_KEY, JSON.stringify(payload));
+    renderInsightsContent(host, json.insights, payload.ts);
+  } catch (e) {
+    host.innerHTML = `<div class="metrics-sec"><div class="metrics-sec-lbl">AI ZAKLJUČCI</div><div style="padding:18px;color:var(--red);font-size:12px">${esc(e.message)}</div></div>`;
+  }
+}
+
+function renderInsightsContent(host, text, ts){
+  const when = ts ? new Date(ts).toLocaleString('sr-RS',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+  // Basic markdown formatting: ** for headers, - for bullets
+  const html = esc(text)
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/^- (.+)$/gm, '<div class="insight-bullet">• $1</div>')
+    .replace(/\n\n+/g, '<div class="insight-spacer"></div>');
+  host.innerHTML = `<div class="metrics-sec">
+    <div class="metrics-sec-lbl">AI ZAKLJUČCI — Šta radi, šta ne radi</div>
+    <div class="insights-body">${html}</div>
+    <div class="insights-foot">
+      <span style="font-size:10px;color:var(--muted2)">Generisano ${esc(when)}</span>
+      <button class="ai-regen-btn" onclick="generateAIInsights()">↻ Regeneriši</button>
+    </div>
+  </div>`;
 }
 
 /* ── MANAGER DASHBOARD ──────────────────────────────────────────
@@ -3246,6 +3506,8 @@ async function renderManagerDashboard(){
 
   const data = await loadData();
   const members = ['mateja', 'dusica'];
+
+  const responseStats = await loadFirstResponseStats().catch(() => null);
 
   const repStats = await Promise.all(members.map(async (m) => {
     const t = getTargets();
@@ -3280,9 +3542,13 @@ async function renderManagerDashboard(){
       .select('created_at')
       .eq('actor_email', `${m === 'mateja' ? '' : ''}`)  // We don't track per-rep; skip
       .order('created_at', { ascending: false }).limit(1);
+    const rt = responseStats?.perRep?.[m] || null;
     return {
       member: m, daily: dt, mtd, weekClose, weekCalls, pipeline, stale,
       callTarget: t.calls, closeTarget: t.close,
+      responseMedian: rt?.median ?? null,
+      responseAvg: rt?.avg ?? null,
+      responseCount: rt?.count ?? 0,
     };
   }));
 
@@ -3329,6 +3595,10 @@ async function renderManagerDashboard(){
           <div class="md-stat-val">${r.daily.calls||0}<span style="font-size:13px;color:var(--muted)">/${Math.round(r.callTarget/22)}</span></div>
           <div class="md-stat-lbl">Pozivi danas</div>
           <div class="md-stat-bar"><div class="md-stat-bar-fill" style="width:${callPct}%;background:${color}"></div></div>
+        </div>
+        <div class="md-stat" style="grid-column:span 3">
+          <div class="md-stat-val" style="color:${r.responseMedian==null?'var(--muted)':r.responseMedian<=15?'var(--green)':r.responseMedian<=60?'var(--yellow)':'var(--red)'}">${fmtMinutes(r.responseMedian)}</div>
+          <div class="md-stat-lbl">Median 1. odgovor (${r.responseCount} lead-ova)</div>
         </div>
       </div>
     </div>`;
@@ -3688,23 +3958,110 @@ function renderLeadSummary(lead){
   `;
 }
 
+/* ─────────────────── FIRST-RESPONSE TIME ──────────────────────────
+ * Computes minutes between lead-arrival (date_added) and first
+ * activity in lead_activities for that lead. Per-rep average shown
+ * in Manager dashboard. Waiting leads >15min surfaced as banner.
+ * ─────────────────────────────────────────────────────────────── */
+async function loadFirstResponseStats(){
+  // Pull last 200 activity events per lead in last 90 days to compute
+  // first-touch latency. We just need min(created_at) per lead_id.
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-90);
+  const { data, error } = await sb.from('lead_activities')
+    .select('lead_id, created_at, actor_email')
+    .gte('created_at', cutoff.toISOString())
+    .limit(20000);
+  if (error) return null;
+  const firstByLead = new Map();
+  (data||[]).forEach(a => {
+    const t = new Date(a.created_at).getTime();
+    if (!firstByLead.has(a.lead_id) || firstByLead.get(a.lead_id).t > t) {
+      firstByLead.set(a.lead_id, { t, actor: a.actor_email || '' });
+    }
+  });
+  // Match to ghl_leads to get assigned_to + date_added
+  const ids = [...firstByLead.keys()];
+  if (!ids.length) return { perRep: {} };
+  const { data: leadsData } = await sb.from('ghl_leads')
+    .select('id, assigned_to, date_added')
+    .in('id', ids);
+  const perRep = { mateja: [], dusica: [] };
+  (leadsData||[]).forEach(l => {
+    if (!l.assigned_to || !l.date_added) return;
+    const first = firstByLead.get(l.id);
+    if (!first) return;
+    const arrival = new Date(l.date_added).getTime();
+    const minutes = Math.round((first.t - arrival) / 60000);
+    if (minutes < 0 || minutes > 60 * 24 * 30) return;  // sanity
+    if (!perRep[l.assigned_to]) perRep[l.assigned_to] = [];
+    perRep[l.assigned_to].push(minutes);
+  });
+  const stats = {};
+  Object.keys(perRep).forEach(rep => {
+    const arr = perRep[rep];
+    if (!arr.length) { stats[rep] = null; return; }
+    arr.sort((a,b) => a-b);
+    const median = arr[Math.floor(arr.length/2)];
+    const avg = Math.round(arr.reduce((s,v)=>s+v,0)/arr.length);
+    stats[rep] = { count: arr.length, median, avg };
+  });
+  return { perRep: stats };
+}
+
+// Format minutes → "3min" / "47min" / "2h 15min" / "1d 4h"
+function fmtMinutes(m){
+  if (m == null) return '—';
+  if (m < 60)   return `${m} min`;
+  if (m < 1440) return `${Math.floor(m/60)}h ${m%60?(m%60)+'min':''}`.trim();
+  const d = Math.floor(m/1440); const h = Math.floor((m%1440)/60);
+  return `${d}d ${h?h+'h':''}`.trim();
+}
+
+// Returns array of unassigned/un-touched leads waiting >15min
+function findWaitingLeads(){
+  const cutoff = Date.now() - 15 * 60 * 1000;
+  return (cachedLeads||[]).filter(l => {
+    if (l.status === 'Closed' || l.status === 'DQ') return false;
+    if (l.status !== 'Novi') return false;
+    if (!l.date_added) return false;
+    const arrived = new Date(l.date_added).getTime();
+    if (arrived > cutoff) return false;  // arrived <15min ago
+    // Only flag tracker-relevant leads
+    const tags = l.tags || [];
+    if (!tags.some(t => ['qualified','qualified-webinar','webinar-lead','prisustvovao-webinaru'].includes(t))) return false;
+    return true;
+  }).sort((a,b) => new Date(a.date_added) - new Date(b.date_added));
+}
+
 /* ─────────────────── AI WHATSAPP MESSAGE ─────────────────────────
  * Generates a personalized first-touch WhatsApp message in Serbian
  * via /api/lead-message and opens wa.me with it pre-filled.
  * ─────────────────────────────────────────────────────────────── */
-async function sendAIMessage(leadId){
+const AI_SCENARIOS = [
+  { key: 'first-touch',   label: 'Prva poruka',           hint: 'Predstavljanje, prvi kontakt' },
+  { key: 'no-pickup',     label: 'Nije se javio',         hint: 'Posle propuštenog poziva' },
+  { key: 'asked-info',    label: 'Tražio info pa nestao', hint: 'Nudge da nastavi razgovor' },
+  { key: 'cant-now',      label: 'Ne može sada',          hint: 'Posle objekcije o timingu' },
+  { key: 'post-call',     label: 'Posle poziva',          hint: 'Gentle check-in' },
+  { key: 'closing-nudge', label: 'Closing nudge',         hint: 'Finalni push za odluku' },
+];
+
+async function sendAIMessage(leadId, scenario = 'first-touch'){
   const lead = (cachedLeads||[]).find(l => l.id === leadId);
   if (!lead) return;
   if (!lead.phone) { alert('Nema broja za WhatsApp.'); return; }
 
-  // Inline progress UI on the trigger button
   const btn = document.querySelector(`[data-ai-msg="${leadId}"]`);
-  if (btn) { btn.innerHTML = '<span class="ai-spinner"></span> Pišem poruku...'; btn.disabled = true; }
+  if (btn) { btn.innerHTML = '<span class="ai-spinner"></span> Pišem...'; btn.disabled = true; }
+  // Close any open scenario menu
+  const menu = document.getElementById('ai-scenario-menu');
+  if (menu) menu.classList.remove('open');
+
   try {
     const r = await fetch('/api/lead-message', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lead }),
+      body: JSON.stringify({ lead, scenario }),
     });
     const json = await r.json();
     if (!r.ok) {
@@ -3715,12 +4072,41 @@ async function sendAIMessage(leadId){
     if (!phone) { alert('Telefon nije validan.'); return; }
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(json.message)}`;
     window.open(url, '_blank', 'noopener');
-    logActivity(leadId, 'note', null, '[AI message] '+json.message.slice(0,140));
+    const scenarioLabel = (AI_SCENARIOS.find(s => s.key === scenario) || {}).label || scenario;
+    logActivity(leadId, 'note', null, `[AI ${scenarioLabel}] ${json.message.slice(0,140)}`);
   } catch (e) {
     alert('Greška: ' + e.message);
   } finally {
     if (btn) { btn.innerHTML = '✨ AI Poruka'; btn.disabled = false; }
   }
+}
+
+function toggleAIScenarioMenu(leadId, ev){
+  ev?.stopPropagation?.();
+  const existing = document.getElementById('ai-scenario-menu');
+  if (existing) { existing.remove(); return; }
+  const menu = document.createElement('div');
+  menu.id = 'ai-scenario-menu';
+  menu.className = 'ai-scenario-menu';
+  menu.innerHTML = AI_SCENARIOS.map(s =>
+    `<div class="ai-scenario-item" onclick="sendAIMessage('${esc(leadId)}','${s.key}')">
+       <div class="ai-scenario-label">${esc(s.label)}</div>
+       <div class="ai-scenario-hint">${esc(s.hint)}</div>
+     </div>`
+  ).join('');
+  const trigger = document.querySelector(`[data-ai-scen="${leadId}"]`);
+  if (!trigger) return;
+  const rect = trigger.getBoundingClientRect();
+  menu.style.top  = (window.scrollY + rect.bottom + 6) + 'px';
+  menu.style.left = (window.scrollX + Math.max(8, rect.right - 280)) + 'px';
+  document.body.appendChild(menu);
+  // Close on outside click
+  setTimeout(() => {
+    document.addEventListener('click', function closer(){
+      menu.remove();
+      document.removeEventListener('click', closer);
+    });
+  }, 0);
 }
 
 /* ─────────────────── CALL OUTCOME LOGGING ─────────────────────────
@@ -4937,6 +5323,15 @@ function renderLeads(all){
       <div class="stale-banner-count">${staleLeads.length}</div>
     </div>`:''}
 
+    ${(()=>{const waiting=findWaitingLeads();return waiting.length?`<div class="wait-banner" style="margin-bottom:14px" onclick="alert('Leadovi koji čekaju > 15 min:\\n\\n'+${JSON.stringify(waiting.slice(0,8).map(l=>{const min=Math.round((Date.now()-new Date(l.date_added).getTime())/60000);return `• ${l.name||'?'} — čeka ${min}min`;}).join('\\n'))})">
+      <div class="wait-banner-icon">⚠️</div>
+      <div class="wait-banner-text">
+        <div class="wait-banner-title">${waiting.length} lead${waiting.length===1?'':'a'} čeka odgovor</div>
+        <div class="wait-banner-sub">Prvi je stigao pre ${fmtMinutes(Math.round((Date.now()-new Date(waiting[0].date_added).getTime())/60000))} — javi se odmah da ne ohladi</div>
+      </div>
+      <div class="wait-banner-count">${waiting.length}</div>
+    </div>`:'';})()}
+
     ${(()=>{const dupes=findLeadDuplicates();return dupes.length?`<div class="dupe-banner" style="margin-bottom:16px" onclick="alert('Pronađeno ${dupes.length} grupa duplikata.\\n\\n'+${JSON.stringify(dupes.slice(0,8).map(g=>`${g.type==='phone'?'📱':'📧'} ${g.key} → ${g.leads.map(l=>l.name||'?').join(', ')}`).join('\\n'))})">
       <div class="dupe-banner-icon">⚠️</div>
       <div class="dupe-banner-text">
@@ -5063,9 +5458,12 @@ function openLeadDetail(id){
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
           Pozovi
         </a>`:''}
-        ${c.phone?`<button class="ldp-ca-btn ldp-ca-ai" data-ai-msg="${esc(c.id)}" onclick="sendAIMessage('${esc(c.id)}')">
-          ✨ AI Poruka
-        </button>`:''}
+        ${c.phone?`<div class="ldp-ai-group">
+          <button class="ldp-ca-btn ldp-ca-ai" data-ai-msg="${esc(c.id)}" onclick="sendAIMessage('${esc(c.id)}','first-touch')">
+            ✨ AI Poruka
+          </button>
+          <button class="ldp-ca-btn ldp-ca-ai ldp-ca-ai-caret" data-ai-scen="${esc(c.id)}" onclick="toggleAIScenarioMenu('${esc(c.id)}', event)" title="Drugi scenariji">▾</button>
+        </div>`:''}
         ${waLink(c)?`<a class="ldp-ca-btn ldp-ca-wa" href="${waLink(c)}" target="_blank" rel="noopener">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163a11.867 11.867 0 0 1-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 0 1 8.413 3.488 11.824 11.824 0 0 1 3.48 8.414c-.003 6.555-5.338 11.891-11.893 11.891a11.9 11.9 0 0 1-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.86 9.86 0 0 0 1.51 5.26l-.999 3.648 3.978-.607zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.711.306 1.265.489 1.697.626.713.226 1.362.194 1.875.118.572-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
           WhatsApp
