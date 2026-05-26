@@ -674,6 +674,52 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 /* ── ADS VIEW ── */
 .ads-view-btn { display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:99px;border:1px solid var(--b);background:var(--s2);color:var(--muted);font-family:var(--font);font-size:11px;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.3px; }
 .ads-view-btn.active { border-color:var(--accent);background:rgba(59,130,246,.1);color:var(--accent); }
+.smart-btn {
+  padding:7px 14px; border-radius:99px;
+  border:1px solid rgba(168,85,247,.35); background:rgba(168,85,247,.06);
+  color:var(--mateja); font-family:var(--font); font-size:11px; font-weight:700;
+  cursor:pointer; transition:all .2s; letter-spacing:.3px;
+  display:flex; align-items:center; gap:4px;
+}
+.smart-btn:hover { background:rgba(168,85,247,.14); border-color:rgba(168,85,247,.6); }
+.smart-btn.active { background:rgba(168,85,247,.22); color:#d8b4fe; border-color:rgba(168,85,247,.7); }
+
+/* ── AI SUMMARY ─────────────────────── */
+.ai-summary-host {
+  background: linear-gradient(135deg, rgba(168,85,247,.07), rgba(168,85,247,.02));
+  border: 1px solid rgba(168,85,247,.25);
+  border-radius: 12px;
+  padding: 12px 14px;
+  min-height: 38px;
+}
+.ai-summary-text {
+  font-size: 13px; line-height: 1.5; color: var(--text); font-weight: 500;
+}
+.ai-summary-foot {
+  display:flex; justify-content:space-between; align-items:center;
+  margin-top: 10px; padding-top: 8px; border-top: 1px dashed rgba(168,85,247,.18);
+}
+.ai-gen-btn {
+  background: linear-gradient(135deg, rgba(168,85,247,.4), rgba(147,51,234,.4));
+  border: 1px solid rgba(168,85,247,.5); color: #fff;
+  padding: 9px 14px; border-radius: 9px; cursor: pointer;
+  font-family: inherit; font-size: 12px; font-weight: 700; letter-spacing: .3px;
+  transition: all .15s; display:flex; align-items:center; gap:6px;
+}
+.ai-gen-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(168,85,247,.3); }
+.ai-regen-btn {
+  background: transparent; border: 1px solid rgba(168,85,247,.3);
+  color: var(--mateja); padding: 4px 9px; border-radius: 6px;
+  cursor: pointer; font-family: inherit; font-size: 11px; font-weight: 700;
+}
+.ai-regen-btn:hover { background: rgba(168,85,247,.1); }
+.ai-spinner {
+  display: inline-block; width: 14px; height: 14px;
+  border: 2px solid rgba(168,85,247,.2); border-top-color: var(--mateja);
+  border-radius: 50%; animation: ai-spin .8s linear infinite;
+}
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+
 .tag-filter {
   padding:7px 10px;border-radius:99px;border:1px solid var(--b);
   background:var(--s2);color:var(--text);font-family:var(--font);
@@ -1979,6 +2025,7 @@ let leadsSearch  = '';
 let leadsShowFollowUp = false;  // when true, only show leads needing follow-up today
 let leadsShowStale    = false;  // when true, only show stale (untouched 14d+) leads
 let leadsTagFilter    = '';     // empty = no tag filter; otherwise exact tag string
+let leadsSmartView    = false;  // when true, sort by score desc + hide cold
 let cachedLeads  = [];
 let leadCounts   = { all: 0, qualified: 0, disqualified: 0, webinar_lead: 0, webinar_attended: 0, lead_magnet: 0 };
 let openNotes    = new Set();
@@ -3327,6 +3374,76 @@ async function loadLeads(lead_type){
   return data||[];
 }
 
+/* ─────────────────── AI LEAD SUMMARY ──────────────────────────────
+ * Calls /api/lead-summary which uses Anthropic's Claude to produce a
+ * 3-sentence sales brief in Serbian. Cached per-lead in Supabase
+ * (column ghl_leads.ai_summary) so we only burn a token when the
+ * underlying data changes or the rep clicks "regenerate".
+ *
+ * Requires this Supabase SQL once:
+ *   alter table ghl_leads add column if not exists ai_summary text;
+ *   alter table ghl_leads add column if not exists ai_summary_at timestamptz;
+ *
+ * And ANTHROPIC_API_KEY set in Vercel env vars.
+ * ─────────────────────────────────────────────────────────────── */
+async function generateLeadSummary(leadId, force = false){
+  const lead = (cachedLeads||[]).find(l => l.id === leadId);
+  if (!lead) return;
+  const host = document.getElementById('ai-summary-body');
+  if (!host) return;
+
+  if (!force && lead.ai_summary) {
+    renderLeadSummary(lead);
+    return;
+  }
+
+  host.innerHTML = `<div style="display:flex;align-items:center;gap:8px;color:var(--muted);font-size:12px"><span class="ai-spinner"></span> Generišem sažetak...</div>`;
+  try {
+    const r = await fetch('/api/lead-summary', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lead }),
+    });
+    const json = await r.json();
+    if (!r.ok) {
+      host.innerHTML = `<div style="color:var(--red);font-size:12px;font-weight:600">${esc(json.error || 'Greška: '+r.status)}</div>`;
+      return;
+    }
+    lead.ai_summary = json.summary;
+    lead.ai_summary_at = new Date().toISOString();
+    // Cache to Supabase (no-op if columns don't exist)
+    try {
+      await sb.from('ghl_leads')
+        .update({ ai_summary: json.summary, ai_summary_at: lead.ai_summary_at })
+        .eq('id', leadId);
+    } catch {}
+    renderLeadSummary(lead);
+  } catch (e) {
+    host.innerHTML = `<div style="color:var(--red);font-size:12px">Greška: ${esc(e.message)}</div>`;
+  }
+}
+
+function renderLeadSummary(lead){
+  const host = document.getElementById('ai-summary-body');
+  if (!host) return;
+  if (!lead.ai_summary) {
+    host.innerHTML = `
+      <button class="ai-gen-btn" onclick="generateLeadSummary('${esc(lead.id)}', true)">
+        ✨ Generiši AI sažetak
+      </button>
+      <div style="font-size:10px;color:var(--muted2);margin-top:6px">Claude će napisati 3-rečenični brief za ovog leada.</div>`;
+    return;
+  }
+  const when = lead.ai_summary_at ? new Date(lead.ai_summary_at).toLocaleString('sr-RS',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '';
+  host.innerHTML = `
+    <div class="ai-summary-text">${esc(lead.ai_summary)}</div>
+    <div class="ai-summary-foot">
+      <span style="font-size:10px;color:var(--muted2)">${when?`Generisano ${esc(when)}`:''}</span>
+      <button class="ai-regen-btn" onclick="generateLeadSummary('${esc(lead.id)}', true)">↻ Regeneriši</button>
+    </div>
+  `;
+}
+
 /* ─────────────────── LEAD SCORING ─────────────────────────────────
  * Heuristic 0–100 score, then bucketed into 🔥 hot / 🌤 warm / ❄️ cold.
  * Signals:
@@ -3805,6 +3922,12 @@ function toggleShowSnoozed(){
   renderLeads(cachedLeads);
 }
 
+function toggleSmartView(){
+  leadsSmartView = !leadsSmartView;
+  if (leadsSmartView) { leadsShowFollowUp = false; leadsShowStale = false; }
+  renderLeads(cachedLeads);
+}
+
 function stlStart(){
   if (_stlTimer) return;
   _stlSeen = stlLoadSeenFromStorage() || new Set();
@@ -4180,6 +4303,14 @@ function computeLeads(){
   if(leadsFilter==='mateja')        leads=searched.filter(l=>l.assigned_to==='mateja');
   else if(leadsFilter==='dusica')   leads=searched.filter(l=>l.assigned_to==='dusica');
   else if(leadsFilter==='unassigned') leads=searched.filter(l=>!l.assigned_to);
+  if(leadsSmartView){
+    // Hide cold leads (score < 45) and sort hottest-first.
+    leads = leads
+      .map(l => ({ l, s: leadScore(l) }))
+      .filter(x => x.s >= 45 && x.l.status !== 'Closed' && x.l.status !== 'DQ')
+      .sort((a, b) => b.s - a.s)
+      .map(x => x.l);
+  }
   const fc={
     all:searched.length,
     mateja:searched.filter(l=>l.assigned_to==='mateja').length,
@@ -4439,6 +4570,9 @@ function renderLeads(all){
         <button class="filter-btn ${leadsFilter==='dusica'?'active':''}" data-filter="dusica" onclick="filterLeads('dusica')">Dusica</button>
         <button class="filter-btn ${leadsFilter==='unassigned'?'active':''}" data-filter="unassigned" onclick="filterLeads('unassigned')">Nedodeljeni</button>
       </div>
+      <button class="smart-btn ${leadsSmartView?'active':''}" onclick="toggleSmartView()" title="Prikaži samo hot/warm leadove, sortirano po skoru">
+        ${leadsSmartView?'✓ Smart':'🎯 Smart'}
+      </button>
       <select class="tag-filter" onchange="setTagFilter(this.value)" title="Filtriraj po tagu">
         <option value="">Svi tagovi</option>
         ${availableTags().slice(0,30).map(t=>`<option value="${esc(t.tag)}" ${leadsTagFilter===t.tag?'selected':''}>${esc(t.tag)} (${t.n})</option>`).join('')}
@@ -4504,6 +4638,10 @@ function openLeadDetail(id){
   document.getElementById('ldpName').textContent=c.name||'Nepoznat';
   document.getElementById('ldpMeta').innerHTML=meta.map(p=>`<span>${esc(p)}</span>`).join('<span style="margin:0 5px;opacity:.3">·</span>');
   document.getElementById('ldpBody').innerHTML=`
+    <div style="margin-bottom:14px">
+      <div class="ldp-sec-lbl">✨ AI Sažetak</div>
+      <div id="ai-summary-body" class="ai-summary-host"></div>
+    </div>
     ${c.phone?`<div style="margin-bottom:14px">
       <div class="ldp-sec-lbl">Kontakt</div>
       <div class="ldp-contact-actions">
@@ -4578,6 +4716,7 @@ function openLeadDetail(id){
   `;
   document.getElementById('leadDetailOverlay').classList.add('open');
   renderLeadActivityInto('ldpActivityList', c.id);
+  renderLeadSummary(c);
 }
 
 function closeLeadDetail(){
