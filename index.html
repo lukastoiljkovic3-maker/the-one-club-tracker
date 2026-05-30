@@ -4358,6 +4358,7 @@ function leadHeat(score){
  *   create index if not exists lead_activities_lead_id_idx
  *     on lead_activities (lead_id, created_at desc);
  * ─────────────────────────────────────────────────────────────── */
+let _activityLogTableWarned = false;
 async function logActivity(leadId, actionType, oldValue, newValue){
   if (!leadId || !actionType) return;
   // Skip no-ops
@@ -4365,14 +4366,51 @@ async function logActivity(leadId, actionType, oldValue, newValue){
   const nv = newValue==null ? null : String(newValue);
   if (ov === nv) return;
   try {
-    await sb.from('lead_activities').insert({
+    const { error } = await sb.from('lead_activities').insert({
       lead_id: leadId,
       actor_email: currentUserEmail,
       action_type: actionType,
       old_value: ov,
       new_value: nv,
     });
+    if (error) {
+      // If the table doesn't exist, warn the user ONCE per session so
+      // they know to run the setup SQL. Otherwise the badges only live
+      // in memory and vanish on reload.
+      const msg = (error.message||'') + ' ' + (error.code||'');
+      const isMissingTable = /relation .* does not exist|lead_activities/i.test(msg);
+      if (isMissingTable && !_activityLogTableWarned) {
+        _activityLogTableWarned = true;
+        showActivityLogSetupWarning();
+      }
+    }
   } catch (e) { /* non-fatal */ }
+}
+
+function showActivityLogSetupWarning(){
+  let wrap = document.getElementById('stl-toast-wrap');
+  if (!wrap) {
+    wrap = document.createElement('div');
+    wrap.id = 'stl-toast-wrap'; wrap.className = 'stl-toast-wrap';
+    document.body.appendChild(wrap);
+  }
+  const toast = document.createElement('div');
+  toast.className = 'stl-toast';
+  toast.style.borderColor = 'rgba(234,179,8,.6)';
+  toast.style.background = 'linear-gradient(135deg, rgba(234,179,8,.16), rgba(234,179,8,.06))';
+  toast.innerHTML = `
+    <div class="stl-toast-icon" style="background:rgba(234,179,8,.2)">⚠️</div>
+    <div class="stl-toast-body">
+      <div class="stl-toast-title" style="color:var(--yellow)">Setup nedovršen</div>
+      <div class="stl-toast-name">Aktivnosti se ne čuvaju u bazi</div>
+      <div class="stl-toast-meta">Pokreni SQL: <code>create table lead_activities ...</code> u Supabase</div>
+    </div>
+    <div class="stl-toast-close" title="Zatvori">×</div>
+  `;
+  const dismiss=()=>{toast.classList.add('leaving');setTimeout(()=>toast.remove(),250);};
+  toast.querySelector('.stl-toast-close').onclick=(e)=>{e.stopPropagation();dismiss();};
+  wrap.appendChild(toast);
+  setTimeout(dismiss, 20000);
 }
 
 async function loadLeadActivities(leadId, limit = 25){
@@ -4934,28 +4972,24 @@ async function attachLastActivities(leads){
   return true;
 }
 
-// Leads we just acted on — stay visible in the list for 30s
-// even if active filters (Smart / Follow-up / Stale) would hide them,
-// so the rep sees the new last-action badge confirming their click.
-const _recentActedLeads = new Map();  // leadId → timestamp expires
+// Leads acted on this session — kept visible in the list regardless of
+// active filters (Smart / Follow-up / Stale / tag / assign / snooze),
+// so the rep can always see what they marked. Cleared only on full
+// page reload or by manually clicking the lead away.
+const _recentActedLeads = new Set();
 function markRecentlyActed(leadId){
-  _recentActedLeads.set(leadId, Date.now() + 30000);
-  // Trigger a row flash after next render
+  _recentActedLeads.add(leadId);
+  // Brief green pulse so the rep notices the badge update
   setTimeout(() => {
-    const tr = document.querySelector(`#leadsBody tr [data-ai-msg="${leadId}"]`)?.closest('tr')
-            || [...document.querySelectorAll('#leadsBody tr')].find(t => (t.getAttribute('onclick')||'').includes(leadId));
+    const tr = [...document.querySelectorAll('#leadsBody tr')]
+      .find(t => (t.getAttribute('onclick')||'').includes(leadId));
     if (tr) {
       tr.classList.remove('row-flash'); void tr.offsetWidth;  // restart anim
       tr.classList.add('row-flash');
     }
   }, 30);
 }
-function isRecentlyActed(leadId){
-  const exp = _recentActedLeads.get(leadId);
-  if (!exp) return false;
-  if (exp < Date.now()) { _recentActedLeads.delete(leadId); return false; }
-  return true;
-}
+function isRecentlyActed(leadId){ return _recentActedLeads.has(leadId); }
 
 // Optimistically update a lead's last_activity field locally so the
 // row badge refreshes immediately without waiting for re-fetch.
