@@ -831,6 +831,13 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .last-action.la-warm { background: rgba(234,179,8,.10);  color: var(--yellow); }
 .last-action.la-bad  { background: rgba(244,63,94,.10);  color: var(--red); }
 .last-action.la-meh  { background: rgba(96,165,250,.08); color: #60a5fa; }
+
+/* Row flash when last_activity changes (after clicking call outcome / status / assign) */
+@keyframes row-flash {
+  0%   { background-color: rgba(34,197,94,.25); }
+  100% { background-color: transparent; }
+}
+tr.row-flash > td { animation: row-flash 1.6s ease-out; }
 .ltr-status-sel {
   padding: 5px 8px; border-radius: 8px; border: 1px solid var(--b);
   background: var(--s2); color: var(--text); font-family: var(--font);
@@ -4927,6 +4934,29 @@ async function attachLastActivities(leads){
   return true;
 }
 
+// Leads we just acted on — stay visible in the list for 30s
+// even if active filters (Smart / Follow-up / Stale) would hide them,
+// so the rep sees the new last-action badge confirming their click.
+const _recentActedLeads = new Map();  // leadId → timestamp expires
+function markRecentlyActed(leadId){
+  _recentActedLeads.set(leadId, Date.now() + 30000);
+  // Trigger a row flash after next render
+  setTimeout(() => {
+    const tr = document.querySelector(`#leadsBody tr [data-ai-msg="${leadId}"]`)?.closest('tr')
+            || [...document.querySelectorAll('#leadsBody tr')].find(t => (t.getAttribute('onclick')||'').includes(leadId));
+    if (tr) {
+      tr.classList.remove('row-flash'); void tr.offsetWidth;  // restart anim
+      tr.classList.add('row-flash');
+    }
+  }, 30);
+}
+function isRecentlyActed(leadId){
+  const exp = _recentActedLeads.get(leadId);
+  if (!exp) return false;
+  if (exp < Date.now()) { _recentActedLeads.delete(leadId); return false; }
+  return true;
+}
+
 // Optimistically update a lead's last_activity field locally so the
 // row badge refreshes immediately without waiting for re-fetch.
 function setLocalLastActivity(leadId, actionType, newValue, oldValue = null){
@@ -4940,6 +4970,7 @@ function setLocalLastActivity(leadId, actionType, newValue, oldValue = null){
     actor_email: currentUserEmail || '',
     created_at: new Date().toISOString(),
   };
+  markRecentlyActed(leadId);
 }
 
 // Formats a lead_activities row into a compact UI badge: { label, icon, color }
@@ -5222,16 +5253,19 @@ function scheduleLeadSearch(){
 function computeLeads(){
   const q=leadsSearch.trim().toLowerCase();
   const all=cachedLeads||[];
+  // Pin recently-acted leads — they stay visible for 30s even if active
+  // filters would normally hide them, so the rep sees their click reflected.
+  const keepAlways = l => isRecentlyActed(l.id);
   let searched=q ? all.filter(l=>[l.name,l.email,l.phone,l.instagram].some(v=>v&&v.toLowerCase().includes(q))) : all;
   if(leadsShowFollowUp){
     const todayStr=new Date().toISOString().slice(0,10);
-    searched=searched.filter(l=>l.follow_up_date===todayStr&&l.status!=='Closed'&&l.status!=='DQ');
+    searched=searched.filter(l=>keepAlways(l)||(l.follow_up_date===todayStr&&l.status!=='Closed'&&l.status!=='DQ'));
   }
   if(leadsTagFilter){
-    searched=searched.filter(l=>Array.isArray(l.tags)&&l.tags.includes(leadsTagFilter));
+    searched=searched.filter(l=>keepAlways(l)||(Array.isArray(l.tags)&&l.tags.includes(leadsTagFilter)));
   }
   if(!leadsShowSnoozed){
-    searched=searched.filter(l=>!isSnoozed(l.id));
+    searched=searched.filter(l=>keepAlways(l)||!isSnoozed(l.id));
   }
   if(leadsShowStale){
     // Stale = open AND created >14d ago AND no upcoming follow-up
@@ -5239,6 +5273,7 @@ function computeLeads(){
     const cutoffIso=fourteenDaysAgo.toISOString();
     const cutoffDay=fourteenDaysAgo.toISOString().slice(0,10);
     searched=searched.filter(l=>{
+      if (keepAlways(l)) return true;
       if (l.status==='Closed'||l.status==='DQ') return false;
       if (l.date_added && l.date_added >= cutoffIso) return false;
       // If they have a future or recent follow-up, not stale
@@ -5247,14 +5282,14 @@ function computeLeads(){
     });
   }
   let leads=searched;
-  if(leadsFilter==='mateja')        leads=searched.filter(l=>l.assigned_to==='mateja');
-  else if(leadsFilter==='dusica')   leads=searched.filter(l=>l.assigned_to==='dusica');
-  else if(leadsFilter==='unassigned') leads=searched.filter(l=>!l.assigned_to);
+  if(leadsFilter==='mateja')        leads=searched.filter(l=>keepAlways(l)||l.assigned_to==='mateja');
+  else if(leadsFilter==='dusica')   leads=searched.filter(l=>keepAlways(l)||l.assigned_to==='dusica');
+  else if(leadsFilter==='unassigned') leads=searched.filter(l=>keepAlways(l)||!l.assigned_to);
   if(leadsSmartView){
-    // Hide cold leads (score < 45) and sort hottest-first.
+    // Hide cold leads (score < 45) and sort hottest-first. Pinned leads pass through.
     leads = leads
       .map(l => ({ l, s: leadScore(l) }))
-      .filter(x => x.s >= 45 && x.l.status !== 'Closed' && x.l.status !== 'DQ')
+      .filter(x => keepAlways(x.l) || (x.s >= 45 && x.l.status !== 'Closed' && x.l.status !== 'DQ'))
       .sort((a, b) => b.s - a.s)
       .map(x => x.l);
   }
