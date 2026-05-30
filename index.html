@@ -4374,43 +4374,48 @@ async function logActivity(leadId, actionType, oldValue, newValue){
       new_value: nv,
     });
     if (error) {
-      // If the table doesn't exist, warn the user ONCE per session so
-      // they know to run the setup SQL. Otherwise the badges only live
-      // in memory and vanish on reload.
       const msg = (error.message||'') + ' ' + (error.code||'');
-      const isMissingTable = /relation .* does not exist|lead_activities/i.test(msg);
-      if (isMissingTable && !_activityLogTableWarned) {
+      const isMissingTable = /relation .* does not exist|PGRST20[0-5]/i.test(msg);
+      const isRLSBlocked   = /row-level security|violates.*policy|RLS/i.test(msg);
+      if ((isMissingTable || isRLSBlocked) && !_activityLogTableWarned) {
         _activityLogTableWarned = true;
-        showActivityLogSetupWarning();
+        showActivityLogSetupWarning(isRLSBlocked ? 'rls' : 'table', error.message);
       }
     }
   } catch (e) { /* non-fatal */ }
 }
 
-function showActivityLogSetupWarning(){
+function showActivityLogSetupWarning(kind, rawError){
   let wrap = document.getElementById('stl-toast-wrap');
   if (!wrap) {
     wrap = document.createElement('div');
     wrap.id = 'stl-toast-wrap'; wrap.className = 'stl-toast-wrap';
     document.body.appendChild(wrap);
   }
+  const isRLS = kind === 'rls';
+  const title = isRLS ? 'RLS blokira upis' : 'Setup nedovršen';
+  const msg   = isRLS
+    ? 'Tabela postoji ali RLS odbija upis. Pokreni: <code>ALTER TABLE lead_activities DISABLE ROW LEVEL SECURITY;</code>'
+    : 'Tabela <code>lead_activities</code> ne postoji. Pokreni create-table SQL u Supabase.';
   const toast = document.createElement('div');
   toast.className = 'stl-toast';
   toast.style.borderColor = 'rgba(234,179,8,.6)';
   toast.style.background = 'linear-gradient(135deg, rgba(234,179,8,.16), rgba(234,179,8,.06))';
+  toast.style.maxWidth = '420px';
   toast.innerHTML = `
     <div class="stl-toast-icon" style="background:rgba(234,179,8,.2)">⚠️</div>
     <div class="stl-toast-body">
-      <div class="stl-toast-title" style="color:var(--yellow)">Setup nedovršen</div>
+      <div class="stl-toast-title" style="color:var(--yellow)">${esc(title)}</div>
       <div class="stl-toast-name">Aktivnosti se ne čuvaju u bazi</div>
-      <div class="stl-toast-meta">Pokreni SQL: <code>create table lead_activities ...</code> u Supabase</div>
+      <div class="stl-toast-meta" style="line-height:1.5">${msg}</div>
+      ${rawError?`<div class="stl-toast-meta" style="margin-top:6px;opacity:.7;font-family:monospace;font-size:10px">${esc(rawError.slice(0,160))}</div>`:''}
     </div>
     <div class="stl-toast-close" title="Zatvori">×</div>
   `;
   const dismiss=()=>{toast.classList.add('leaving');setTimeout(()=>toast.remove(),250);};
   toast.querySelector('.stl-toast-close').onclick=(e)=>{e.stopPropagation();dismiss();};
   wrap.appendChild(toast);
-  setTimeout(dismiss, 20000);
+  setTimeout(dismiss, 25000);
 }
 
 async function loadLeadActivities(leadId, limit = 25){
