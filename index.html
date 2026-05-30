@@ -819,6 +819,18 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .heat-hot  { background: rgba(244,63,94,.13);  color: #f43f5e; }
 .heat-warm { background: rgba(234,179,8,.12);  color: var(--yellow); }
 .heat-cold { background: rgba(96,165,250,.10); color: #60a5fa; }
+
+.last-action {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 700; letter-spacing: .2px;
+  margin-top: 5px; padding: 2px 8px; border-radius: 99px;
+  background: var(--s3); color: var(--muted);
+  max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.last-action.la-good { background: rgba(34,197,94,.12);  color: var(--green); }
+.last-action.la-warm { background: rgba(234,179,8,.10);  color: var(--yellow); }
+.last-action.la-bad  { background: rgba(244,63,94,.10);  color: var(--red); }
+.last-action.la-meh  { background: rgba(96,165,250,.08); color: #60a5fa; }
 .ltr-status-sel {
   padding: 5px 8px; border-radius: 8px; border: 1px solid var(--b);
   background: var(--s2); color: var(--text); font-family: var(--font);
@@ -2599,13 +2611,21 @@ async function loadMemberFollowUps(member){
     listEl.innerHTML=`<div style="text-align:center;padding:32px 16px;color:var(--muted);font-size:13px"><div style="font-size:24px;margin-bottom:8px">✨</div><div style="font-weight:700">Nema zakazanih follow-up poziva</div></div>`;
     return;
   }
+  // Attach last activity to each follow-up lead so we can show what
+  // the rep last marked.
+  await attachLastActivities(leads);
   const row=l=>{
     const cls=l.follow_up_date<todayStr?'fu-overdue':l.follow_up_date===todayStr?'fu-today':'';
     const dt=new Date(l.follow_up_date+'T00:00').toLocaleDateString('sr-RS',{day:'numeric',month:'short'});
     const meta=[l.phone,l.instagram?`@${l.instagram.replace('@','')}`:''].filter(Boolean).join(' · ');
+    const lastAct = lastActionBadge(l.last_activity);
     return `<div class="mfu-row" onclick="openLeadDetailFromMember('${esc(l.id)}')">
       <div class="mfu-date ${cls}">${dt}</div>
-      <div class="mfu-name"><div style="font-weight:700;font-size:13px">${esc(l.name||'Nepoznat')}${contactActions(l)}</div>${meta?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(meta)}</div>`:''}</div>
+      <div class="mfu-name">
+        <div style="font-weight:700;font-size:13px">${esc(l.name||'Nepoznat')}${contactActions(l)}</div>
+        ${meta?`<div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(meta)}</div>`:''}
+        ${lastAct?`<div class="last-action ${lastAct.cls}" style="margin-top:4px" title="${esc(lastAct.actor||'')} · ${esc(lastAct.when)}">${lastAct.icon} ${esc(lastAct.label)} · ${esc(lastAct.when)}</div>`:''}
+      </div>
       <div class="mfu-status">${esc(l.status||'Novi')}</div>
       <span class="ltr-arrow" style="margin-left:auto">›</span>
     </div>`;
@@ -4116,8 +4136,10 @@ function toggleAIScenarioMenu(leadId, ev){
 async function logCallOutcome(leadId, outcome){
   const lead = (cachedLeads||[]).find(l => l.id === leadId);
   if (!lead) return;
-  // Log call to activity (non-blocking)
+  // Log call to activity (non-blocking) + optimistic local update
   logActivity(leadId, 'call', null, outcome);
+  setLocalLastActivity(leadId, 'call', outcome);
+  refreshLeadRows();
 
   // Auto-status changes based on outcome
   const statusMap = {
@@ -4872,6 +4894,101 @@ async function renderLeadsSection(){
   [cachedLeads, leadCounts]=await Promise.all([loadLeads(leadsSubTab), loadLeadCounts()]);
   if(leadsView==='ads') { await renderAdsView(); return; }
   renderLeads(cachedLeads);
+  // After initial render, attach last-activity per lead and refresh rows.
+  attachLastActivities(cachedLeads).then(touched => {
+    if (touched) refreshLeadRows();
+  });
+}
+
+// For the currently loaded leads, fetch the most recent activity per
+// lead (call outcome, status change, assign, etc.) so the UI can
+// show "Poslednja akcija: Javio se · pre 2h" without opening the panel.
+async function attachLastActivities(leads){
+  const ids = (leads||[]).map(l => l.id).filter(Boolean);
+  if (!ids.length) return false;
+  // Query in chunks to avoid URL length issues
+  const CHUNK = 200;
+  const map = new Map();
+  for (let i = 0; i < ids.length; i += CHUNK) {
+    const slice = ids.slice(i, i + CHUNK);
+    const { data, error } = await sb.from('lead_activities')
+      .select('lead_id, action_type, new_value, old_value, actor_email, created_at')
+      .in('lead_id', slice)
+      .order('created_at', { ascending: false })
+      .limit(2000);
+    if (error || !data) continue;
+    data.forEach(a => {
+      // First row per lead_id wins (already sorted DESC)
+      if (!map.has(a.lead_id)) map.set(a.lead_id, a);
+    });
+  }
+  if (!map.size) return false;
+  leads.forEach(l => { l.last_activity = map.get(l.id) || null; });
+  return true;
+}
+
+// Optimistically update a lead's last_activity field locally so the
+// row badge refreshes immediately without waiting for re-fetch.
+function setLocalLastActivity(leadId, actionType, newValue, oldValue = null){
+  const lead = (cachedLeads||[]).find(l => l.id === leadId);
+  if (!lead) return;
+  lead.last_activity = {
+    lead_id: leadId,
+    action_type: actionType,
+    new_value: newValue,
+    old_value: oldValue,
+    actor_email: currentUserEmail || '',
+    created_at: new Date().toISOString(),
+  };
+}
+
+// Formats a lead_activities row into a compact UI badge: { label, icon, color }
+function lastActionBadge(act){
+  if (!act) return null;
+  const ICON = {
+    'call':     { 'Javio se':'📞','Nije javio':'⏱','Govorna pošta':'🎙','Pogrešan broj':'❌' },
+    'status':   { 'Novi':'🆕','Follow Up':'🔁','Closed':'✅','DQ':'❌' },
+    'assign':   '👤',
+    'followup': '📅',
+    'note':     '📝',
+    'deal':     '💰',
+    'snooze':   '😴',
+  };
+  let icon = '•', label = act.new_value || act.action_type;
+  if (act.action_type === 'call') {
+    icon = ICON.call[act.new_value] || '📞';
+    label = act.new_value || 'Poziv';
+  } else if (act.action_type === 'status') {
+    icon = ICON.status[act.new_value] || '🔄';
+    label = `${act.new_value || ''}`;
+  } else if (act.action_type === 'assign') {
+    icon = '👤';
+    label = act.new_value ? `→ ${act.new_value.charAt(0).toUpperCase()+act.new_value.slice(1)}` : 'Unassign';
+  } else if (act.action_type === 'followup') {
+    icon = '📅';
+    label = act.new_value ? `FU ${act.new_value}` : 'FU obrisan';
+  } else if (act.action_type === 'note') {
+    icon = '📝';
+    label = 'Beleška';
+  } else if (act.action_type === 'deal') {
+    icon = '💰';
+    label = 'Paket';
+  } else if (act.action_type === 'snooze') {
+    icon = '😴';
+    label = act.new_value ? `Snooze ${act.new_value}` : 'Otkazan';
+  }
+  // Color hint
+  let cls = 'la-default';
+  if (act.action_type === 'call') {
+    if (act.new_value === 'Javio se') cls = 'la-good';
+    else if (act.new_value === 'Pogrešan broj') cls = 'la-bad';
+    else cls = 'la-meh';
+  } else if (act.action_type === 'status') {
+    if (act.new_value === 'Closed') cls = 'la-good';
+    else if (act.new_value === 'DQ') cls = 'la-bad';
+    else if (act.new_value === 'Follow Up') cls = 'la-warm';
+  }
+  return { icon, label, cls, when: timeAgoSr(act.created_at), actor: (act.actor_email||'').split('@')[0] };
 }
 
 async function toggleAdsView(){
@@ -5161,13 +5278,18 @@ function buildLeadRows(leads){
     const stOpts=['Novi','Follow Up','Closed','DQ'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('');
     let fuCls=''; if(c.follow_up_date){fuCls=c.follow_up_date===todayStr?'fu-today':c.follow_up_date<todayStr?'fu-overdue':'';}
     const checked=selectedLeadIds.has(c.id)?'checked':'';
+    const lastAct = lastActionBadge(c.last_activity);
     return `<tr class="${checked?'ltr-selected':''}" onclick="openLeadDetail('${esc(c.id)}')">
       <td class="ltr-chk-cell" onclick="event.stopPropagation()">
         <input type="checkbox" class="ltr-chk" ${checked} onchange="toggleLeadSelection('${esc(c.id)}',this.checked)" />
       </td>
       <td><div class="ltr-contact">
         <div class="ltr-av ${avCls}">${initials}</div>
-        <div><div class="ltr-name">${esc(c.name)}${contactActions(c)}</div>${meta?`<div class="ltr-sub">${esc(meta)}</div>`:''}</div>
+        <div>
+          <div class="ltr-name">${esc(c.name)}${contactActions(c)}</div>
+          ${meta?`<div class="ltr-sub">${esc(meta)}</div>`:''}
+          ${lastAct?`<div class="last-action ${lastAct.cls}" title="${esc(lastAct.actor||'')} · ${esc(lastAct.when)}">${lastAct.icon} ${esc(lastAct.label)} · ${esc(lastAct.when)}</div>`:''}
+        </div>
       </div></td>
       <td>${typePill(c.lead_type)}${(()=>{const h=leadHeat(leadScore(c));return `<span class="heat ${h.cls}" title="Score: ${leadScore(c)}">${h.icon} ${h.label}</span>`;})()}</td>
       <td class="col-mob" onclick="event.stopPropagation()">
@@ -5260,12 +5382,14 @@ async function bulkAssign(member){
   if (!ids.length) return;
   const { error } = await sb.from('ghl_leads').update({ assigned_to: member }).in('id', ids);
   if (error) { alert('Greška: '+error.message); return; }
-  // Log each
+  // Log each + optimistic local last_activity
   ids.forEach(id => {
     const lead = cachedLeads.find(l=>l.id===id);
     if (lead) {
-      logActivity(id, 'assign', lead.assigned_to||null, member);
+      const old = lead.assigned_to||null;
+      logActivity(id, 'assign', old, member);
       lead.assigned_to = member;
+      setLocalLastActivity(id, 'assign', member, old);
     }
   });
   refreshLeadRows();
@@ -5279,8 +5403,10 @@ async function bulkStatus(status){
   ids.forEach(id => {
     const lead = cachedLeads.find(l=>l.id===id);
     if (lead) {
-      logActivity(id, 'status', lead.status||'Novi', status);
+      const old = lead.status||'Novi';
+      logActivity(id, 'status', old, status);
       lead.status = status;
+      setLocalLastActivity(id, 'status', status, old);
     }
   });
   refreshLeadRows();
@@ -5295,8 +5421,10 @@ async function bulkFollowUp(date){
   ids.forEach(id => {
     const lead = cachedLeads.find(l=>l.id===id);
     if (lead) {
-      logActivity(id, 'followup', lead.follow_up_date||null, val);
+      const old = lead.follow_up_date||null;
+      logActivity(id, 'followup', old, val);
       lead.follow_up_date = val;
+      setLocalLastActivity(id, 'followup', val, old);
     }
   });
   refreshLeadRows();
@@ -5584,6 +5712,7 @@ async function assignLeadPanel(id,member){
   if (error) return;
   lead.assigned_to = newVal;
   logActivity(id, 'assign', oldVal, newVal);
+  setLocalLastActivity(id, 'assign', newVal, oldVal);
   // Partial UI updates instead of full panel re-render
   if (currentLeadId === id) updatePanelAssignButtons(newVal);
   refreshLeadRows();
@@ -5735,6 +5864,8 @@ async function updateLeadFollowUp(id,date){
   lead.follow_up_date=date||null;
   await sb.from('ghl_leads').update({follow_up_date:date||null}).eq('id',id);
   logActivity(id,'followup',oldDate,date||null);
+  setLocalLastActivity(id, 'followup', date||null, oldDate);
+  refreshLeadRows();
 }
 
 function updateLeadFollowUpPanel(id,date,input){
@@ -5770,6 +5901,7 @@ async function updateLeadStatus(id,status){
   if(!error){
     if(lead){
       lead.status=status;
+      setLocalLastActivity(id, 'status', status, oldStatus);
       // Partial updates only — keep panel buttons in place
       refreshLeadRows();
       if (currentLeadId === id) {
