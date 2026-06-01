@@ -39,8 +39,12 @@ export default async function handler(req, res) {
     const disqualified = all.filter(c => hasTag(c, 'disqualified-webinar', 'dq'));
     const webinarLead     = all.filter(c => hasTag(c, 'webinar-lead'));
     const webinarAttended = all.filter(c => hasTag(c, 'prisustvovao-webinaru'));
-    // 31.05 attendees — defined by VSL funnel tags in GHL
-    const webinar3105 = all.filter(c => hasTag(c, 'vsl-1', 'vsl-2', 'vsl-3'));
+    // 31.05 webinar attendees — VSL funnel tags + dated 31.05 tags from GHL
+    const webinar3105 = all.filter(c => hasTag(c,
+      'vsl-v1', 'vsl-v2', 'vsl-v3',
+      'webinar-31.05', '31-05-attended',
+      'vsl-1', 'vsl-2', 'vsl-3'  // legacy fallback
+    ));
     const leadMagnet      = all.filter(c => hasTag(c, 'lead-magnet'));
 
     res.status(200).json({ qualified, disqualified, webinarLead, webinarAttended, webinar3105, leadMagnet });
