@@ -39,9 +39,17 @@ export default async function handler(req, res) {
     const disqualified = all.filter(c => hasTag(c, 'disqualified-webinar', 'dq'));
     const webinarLead     = all.filter(c => hasTag(c, 'webinar-lead'));
     const webinarAttended = all.filter(c => hasTag(c, 'prisustvovao-webinaru'));
+    // 31.05 attendees — accept multiple plausible tag variants from GHL
+    const webinar3105 = all.filter(c => hasTag(c,
+      'prisustvovao-31-05-2026',
+      'prisustvovao-31-05',
+      'prisustvovao-31.05',
+      'webinar-31-05',
+      '31-05-2026'
+    ));
     const leadMagnet      = all.filter(c => hasTag(c, 'lead-magnet'));
 
-    res.status(200).json({ qualified, disqualified, webinarLead, webinarAttended, leadMagnet });
+    res.status(200).json({ qualified, disqualified, webinarLead, webinarAttended, webinar3105, leadMagnet });
   } catch (e) {
     res.status(500).json({ error: e.message });
   }

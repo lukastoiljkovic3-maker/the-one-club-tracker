@@ -668,6 +668,8 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .lsb-btn.tab-wb.active     .lsb-count { color: #a855f7; }
 .lsb-btn.tab-wa.active     { border-bottom-color: #10b981; background: rgba(16,185,129,.04); }
 .lsb-btn.tab-wa.active     .lsb-count { color: #10b981; }
+.lsb-btn.tab-wb2.active    { border-bottom-color: #14b8a6; background: rgba(20,184,166,.05); }
+.lsb-btn.tab-wb2.active    .lsb-count { color: #14b8a6; }
 .lsb-btn.tab-lm.active     { border-bottom-color: var(--yellow); background: rgba(234,179,8,.04); }
 .lsb-btn.tab-lm.active     .lsb-count { color: var(--yellow); }
 
@@ -810,6 +812,7 @@ main { max-width: 1440px; margin: 0 auto; padding: 32px 40px; display: flex; fle
 .type-dq { background: rgba(244,63,94,.10);   color: var(--red); }
 .type-wb { background: rgba(168,85,247,.10);  color: #a855f7; }
 .type-wa { background: rgba(16,185,129,.10);  color: #10b981; }
+.type-wb2 { background: rgba(20,184,166,.12); color: #14b8a6; }
 .type-lm { background: rgba(234,179,8,.10);   color: var(--yellow); }
 .heat {
   display: inline-flex; align-items: center; gap: 4px;
@@ -2203,7 +2206,7 @@ let leadsShowStale    = false;  // when true, only show stale (untouched 14d+) l
 let leadsTagFilter    = '';     // empty = no tag filter; otherwise exact tag string
 let leadsSmartView    = false;  // when true, sort by score desc + hide cold
 let cachedLeads  = [];
-let leadCounts   = { all: 0, qualified: 0, disqualified: 0, webinar_lead: 0, webinar_attended: 0, lead_magnet: 0 };
+let leadCounts   = { all: 0, qualified: 0, disqualified: 0, webinar_lead: 0, webinar_attended: 0, webinar_3105: 0, lead_magnet: 0 };
 let openNotes    = new Set();
 let currentUserEmail = null;  // Set after auth; used as actor for activity log
 // Emails that see the Manager dashboard ('Pregled') tab. Add yours here.
@@ -3905,6 +3908,7 @@ async function loadLeads(lead_type){
       disqualified:['dq','disqualified-webinar'],
       webinar_lead:['webinar-lead'],
       webinar_attended:['prisustvovao-webinaru'],
+      webinar_3105:['prisustvovao-31-05-2026'],
       lead_magnet:['lead-magnet'],
     };
     const tags=tagMap[lead_type]||[];
@@ -4842,15 +4846,16 @@ function stlStart(){
 }
 
 async function loadLeadCounts(){
-  const [allR,qR,dqR,wR,waR,lR]=await Promise.all([
+  const [allR,qR,dqR,wR,waR,wbR,lR]=await Promise.all([
     sb.from('ghl_leads').select('id',{count:'exact',head:true}),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['qualified','qualified-webinar']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['dq','disqualified-webinar']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['webinar-lead']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['prisustvovao-webinaru']),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['prisustvovao-31-05-2026']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['lead-magnet']),
   ]);
-  return{all:allR.count||0,qualified:qR.count||0,disqualified:dqR.count||0,webinar_lead:wR.count||0,webinar_attended:waR.count||0,lead_magnet:lR.count||0};
+  return{all:allR.count||0,qualified:qR.count||0,disqualified:dqR.count||0,webinar_lead:wR.count||0,webinar_attended:waR.count||0,webinar_3105:wbR.count||0,lead_magnet:lR.count||0};
 }
 
 function mapContact(c, lead_type){
@@ -4883,10 +4888,16 @@ async function syncLeadsFromGHL(){
     if(json.error)throw new Error(json.error);
     // Merge all contacts by ID — tags stored from GHL, lead_type = highest priority match
     const seen=new Map();
-    const priority=['qualified','disqualified','webinar_attended','webinar_lead','lead_magnet'];
+    const priority=['qualified','disqualified','webinar_3105','webinar_attended','webinar_lead','lead_magnet'];
     [
       ...(json.qualified||[]).map(c=>mapContact(c,'qualified')),
       ...(json.disqualified||[]).map(c=>mapContact(c,'disqualified')),
+      ...(json.webinar3105||[]).map(c=>{
+        const m=mapContact(c,'webinar_3105');
+        // Normalize: ensure the canonical tag is present even if GHL used a variant
+        if(!m.tags.includes('prisustvovao-31-05-2026')) m.tags=[...m.tags,'prisustvovao-31-05-2026'];
+        return m;
+      }),
       ...(json.webinarAttended||[]).map(c=>mapContact(c,'webinar_attended')),
       ...(json.webinarLead||[]).map(c=>mapContact(c,'webinar_lead')),
       ...(json.leadMagnet||[]).map(c=>mapContact(c,'lead_magnet')),
@@ -4895,6 +4906,25 @@ async function syncLeadsFromGHL(){
       if(!existing||priority.indexOf(r.lead_type)<priority.indexOf(existing.lead_type)) seen.set(r.id,r);
     });
     const rows=[...seen.values()];
+    // Before upserting, fetch existing tags so we MERGE rather than OVERWRITE.
+    // Without this, any tag added manually or via CSV import (e.g.
+    // prisustvovao-31-05-2026) would be wiped when GHL doesn't include it.
+    if (rows.length) {
+      const ids = rows.map(r => r.id);
+      const tagsByLead = new Map();
+      const F_CHUNK = 200;
+      for (let i = 0; i < ids.length; i += F_CHUNK) {
+        const {data: existingTags} = await sb.from('ghl_leads')
+          .select('id, tags').in('id', ids.slice(i, i + F_CHUNK));
+        (existingTags || []).forEach(r => tagsByLead.set(r.id, r.tags || []));
+      }
+      rows.forEach(r => {
+        const prev = tagsByLead.get(r.id) || [];
+        const incoming = r.tags || [];
+        const merged = [...new Set([...prev, ...incoming])];
+        r.tags = merged;
+      });
+    }
     if(rows.length){
       // Upsert in chunks to avoid request-size limits
       const CHUNK=500;
@@ -4904,11 +4934,16 @@ async function syncLeadsFromGHL(){
       }
     }
     // Full reconciliation: delete any Supabase rows no longer in GHL.
-    // (Contacts removed from GHL or no longer matching tracker tags.)
+    // EXCEPTION: synthetic IDs starting with 'webinar-' or 'manual-' are
+    // tracker-only leads (CSV-imported attendees who aren't in GHL yet) —
+    // skip them so the import survives the sync.
     const currentIds=new Set(rows.map(r=>r.id));
     const {data:existing,error:fetchErr}=await sb.from('ghl_leads').select('id').limit(20000);
     if(!fetchErr && existing){
-      const stale=existing.filter(r=>!currentIds.has(r.id)).map(r=>r.id);
+      const stale=existing
+        .filter(r => !currentIds.has(r.id))
+        .filter(r => !/^(webinar|manual)-/.test(r.id))  // keep CSV imports
+        .map(r => r.id);
       const CHUNK=200;
       for(let i=0;i<stale.length;i+=CHUNK){
         const {error}=await sb.from('ghl_leads').delete().in('id',stale.slice(i,i+CHUNK));
@@ -5344,7 +5379,7 @@ function computeLeads(){
 // Builds just the <tr> rows HTML for the leads table.
 function buildLeadRows(leads){
   const todayStr=new Date().toISOString().slice(0,10);
-  const typePill=t=>t==='qualified'?'<span class="ltr-type type-q">Qualified</span>':t==='disqualified'?'<span class="ltr-type type-dq">Disqualified</span>':t==='webinar_lead'?'<span class="ltr-type type-wb">Webinar</span>':t==='webinar_attended'?'<span class="ltr-type type-wa">17.05.2026</span>':'<span class="ltr-type type-lm">Lead Magnet</span>';
+  const typePill=t=>t==='qualified'?'<span class="ltr-type type-q">Qualified</span>':t==='disqualified'?'<span class="ltr-type type-dq">Disqualified</span>':t==='webinar_lead'?'<span class="ltr-type type-wb">Webinar</span>':t==='webinar_attended'?'<span class="ltr-type type-wa">17.05.2026</span>':t==='webinar_3105'?'<span class="ltr-type type-wb2">31.05.2026</span>':'<span class="ltr-type type-lm">Lead Magnet</span>';
   return leads.map(c=>{
     const initials=(c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
     const avCls=c.assigned_to==='mateja'?'av-m':c.assigned_to==='dusica'?'av-d':'';
@@ -5595,6 +5630,9 @@ function renderLeads(all){
       <button class="lsb-btn tab-wa ${leadsSubTab==='webinar_attended'?'active':''}" onclick="setLeadsSubTab('webinar_attended')">
         <span class="lsb-count">${leadCounts.webinar_attended}</span><span class="lsb-label">17.05.2026</span>
       </button>
+      <button class="lsb-btn tab-wb2 ${leadsSubTab==='webinar_3105'?'active':''}" onclick="setLeadsSubTab('webinar_3105')">
+        <span class="lsb-count">${leadCounts.webinar_3105}</span><span class="lsb-label">31.05.2026</span>
+      </button>
       <button class="lsb-btn tab-lm ${leadsSubTab==='lead_magnet'?'active':''}" onclick="setLeadsSubTab('lead_magnet')">
         <span class="lsb-count">${leadCounts.lead_magnet}</span><span class="lsb-label">Lead Magnet</span>
       </button>
@@ -5661,7 +5699,7 @@ function openLeadDetail(id){
   const todayStr=new Date().toISOString().slice(0,10);
   const initials=(c.name||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
   const avCls=c.assigned_to==='mateja'?'av-m':c.assigned_to==='dusica'?'av-d':'';
-  const typePillMap={qualified:'<span class="ltr-type type-q">Qualified</span>',disqualified:'<span class="ltr-type type-dq">Disqualified</span>',webinar_lead:'<span class="ltr-type type-wb">Webinar</span>',webinar_attended:'<span class="ltr-type type-wa">17.05.2026</span>',lead_magnet:'<span class="ltr-type type-lm">Lead Magnet</span>'};
+  const typePillMap={qualified:'<span class="ltr-type type-q">Qualified</span>',disqualified:'<span class="ltr-type type-dq">Disqualified</span>',webinar_lead:'<span class="ltr-type type-wb">Webinar</span>',webinar_attended:'<span class="ltr-type type-wa">17.05.2026</span>',webinar_3105:'<span class="ltr-type type-wb2">31.05.2026</span>',lead_magnet:'<span class="ltr-type type-lm">Lead Magnet</span>'};
   const stOpts=['Novi','Follow Up','Closed','DQ'].map(s=>`<option ${c.status===s?'selected':''}>${s}</option>`).join('');
   let fuCls=''; if(c.follow_up_date){fuCls=c.follow_up_date===todayStr?'fu-today':c.follow_up_date<todayStr?'fu-overdue':'';}
   const dealOpts=Object.entries(DEALS).map(([k,v])=>`<option value="${k}" ${c.deal===k?'selected':''}>${v.icon} ${v.label} — ${v.price}</option>`).join('');
