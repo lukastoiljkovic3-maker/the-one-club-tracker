@@ -3908,7 +3908,7 @@ async function loadLeads(lead_type){
       disqualified:['dq','disqualified-webinar'],
       webinar_lead:['webinar-lead'],
       webinar_attended:['prisustvovao-webinaru'],
-      webinar_3105:['prisustvovao-31-05-2026'],
+      webinar_3105:['vsl-1','vsl-2','vsl-3'],
       lead_magnet:['lead-magnet'],
     };
     const tags=tagMap[lead_type]||[];
@@ -4852,7 +4852,7 @@ async function loadLeadCounts(){
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['dq','disqualified-webinar']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['webinar-lead']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['prisustvovao-webinaru']),
-    sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['prisustvovao-31-05-2026']),
+    sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['vsl-1','vsl-2','vsl-3']),
     sb.from('ghl_leads').select('id',{count:'exact',head:true}).overlaps('tags',['lead-magnet']),
   ]);
   return{all:allR.count||0,qualified:qR.count||0,disqualified:dqR.count||0,webinar_lead:wR.count||0,webinar_attended:waR.count||0,webinar_3105:wbR.count||0,lead_magnet:lR.count||0};
@@ -4892,12 +4892,7 @@ async function syncLeadsFromGHL(){
     [
       ...(json.qualified||[]).map(c=>mapContact(c,'qualified')),
       ...(json.disqualified||[]).map(c=>mapContact(c,'disqualified')),
-      ...(json.webinar3105||[]).map(c=>{
-        const m=mapContact(c,'webinar_3105');
-        // Normalize: ensure the canonical tag is present even if GHL used a variant
-        if(!m.tags.includes('prisustvovao-31-05-2026')) m.tags=[...m.tags,'prisustvovao-31-05-2026'];
-        return m;
-      }),
+      ...(json.webinar3105||[]).map(c=>mapContact(c,'webinar_3105')),
       ...(json.webinarAttended||[]).map(c=>mapContact(c,'webinar_attended')),
       ...(json.webinarLead||[]).map(c=>mapContact(c,'webinar_lead')),
       ...(json.leadMagnet||[]).map(c=>mapContact(c,'lead_magnet')),
