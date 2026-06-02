@@ -5363,6 +5363,15 @@ function computeLeads(){
       .filter(x => keepAlways(x.l) || (x.s >= 45 && x.l.status !== 'Closed' && x.l.status !== 'DQ'))
       .sort((a, b) => b.s - a.s)
       .map(x => x.l);
+  } else {
+    // Default sort: leads WITH phones come first (they're actionable for
+    // call / WhatsApp). Within each phone-group, preserve the existing
+    // date_added DESC order from the DB query.
+    leads = leads.slice().sort((a, b) => {
+      const aHas = a.phone ? 0 : 1;
+      const bHas = b.phone ? 0 : 1;
+      return aHas - bHas;
+    });
   }
   const fc={
     all:searched.length,
@@ -5393,7 +5402,7 @@ function buildLeadRows(leads){
         <div class="ltr-av ${avCls}">${initials}</div>
         <div>
           <div class="ltr-name">${esc(c.name)}${contactActions(c)}</div>
-          ${meta?`<div class="ltr-sub">${esc(meta)}</div>`:''}
+          ${meta?`<div class="ltr-sub">${esc(meta)}</div>`:(!c.phone?`<div class="ltr-sub" style="color:var(--muted2);font-style:italic">nema broja · samo email</div>`:'')}
           ${lastAct?`<div class="last-action ${lastAct.cls}" title="${esc(lastAct.actor||'')} · ${esc(lastAct.when)}">${lastAct.icon} ${esc(lastAct.label)} · ${esc(lastAct.when)}</div>`:''}
         </div>
       </div></td>
